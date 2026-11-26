@@ -7,7 +7,7 @@ Each milestone ends with something usable and a run of the
 
 - Xcode project, libghostty pinned and built by a Bun script
 - `TerminalSurface` wrapper; one window running zsh with Ghostty's renderer
-- Config file read at launch
+- settings.json read at launch
 
 ## M1: the hotkey window and the look (2–3 days)
 
@@ -19,8 +19,14 @@ Each milestone ends with something usable and a run of the
 
 ## M2: tabs (2–3 days)
 
-- Custom tab bar in the title bar, in both the dropdown and normal windows
+- Vertical tab sidebar (right by default; left or top in settings), in both the dropdown and normal windows, with tab search and `+`
 - ⌘T / ⌘W / ⌘1–9, labels from folder or running command
+
+## M2.5: settings (2–3 days)
+
+- settings.json with live file watching (both directions)
+- Settings tab opened by the gear icon and ⌘,
+- Theme switcher: midnight (default), graphite, frost, paper
 
 ## M3: smart input (1–2 weeks)
 
@@ -43,7 +49,7 @@ Each milestone ends with something usable and a run of the
 ## M6: polish
 
 - Splits
-- Live config reload, scrollback search
+- Scrollback search
 - Launch at login
 - Signing and notarisation for a clean install
 - fish and bash integration

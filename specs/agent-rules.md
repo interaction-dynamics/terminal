@@ -12,7 +12,7 @@ autocompletion). Every change serves one of them.
 ## The lean rule
 
 - Don't add anything on the non-goals list in `specs/README.md` (AI by
-  default, accounts, sync, telemetry, blocks, plugins, settings window) without
+  default, accounts, sync, telemetry, blocks, plugins) without
   an explicit decision from Thibault.
 - Nothing runs in the background unless the user is using it. No timers,
   polling or network calls.

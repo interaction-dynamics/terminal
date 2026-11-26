@@ -35,7 +35,7 @@ decision and a performance check.
 - No AI features by default
 - No account, sign-in, cloud sync or telemetry
 - No Warp-style "blocks" (output split into cards)
-- No plugin system, no settings window (one config file instead)
+- No plugin system (settings are one JSON file plus a settings tab, see [settings](09-settings.md))
 - No Linux or Windows version
 - No custom terminal engine (see [architecture](01-architecture.md))
 
@@ -61,3 +61,4 @@ decision and a performance check.
 7. [Roadmap](07-roadmap.md)
 8. [Open questions](08-open-questions.md)
 9. [Rules for agents](agent-rules.md)
+10. [Settings](09-settings.md)

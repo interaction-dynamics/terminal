@@ -101,9 +101,8 @@ terminal/
 └── scripts/                # Bun/TypeScript tooling (build libghostty, bench)
 ```
 
-## Config
+## Settings
 
-- One plain text file: `~/.config/terminal/config` (name TBD with the app).
-- Same `key = value` style as Ghostty, so Ghostty options can be passed
-  through to the engine where it makes sense (fonts, colours).
-- Reloaded live when the file changes.
+- One JSON file, `~/.config/terminal/settings.json`, edited by hand or
+  through the settings tab, kept in sync in real time.
+  See [settings](09-settings.md).

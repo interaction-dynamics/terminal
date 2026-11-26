@@ -5,7 +5,7 @@ screen on a global shortcut.
 
 ## Behaviour
 
-- **Global shortcut** toggles it from any app (default `⌥Space`, configurable).
+- **Global shortcut** toggles it from any app (default `⌘⇧\`, configurable).
 - **Slides in** from the top edge (top, bottom, left, right or centre,
   configurable). Animation ≤ 150 ms, can be turned off.
 - **Shows on every desktop** (Space) and **over full-screen apps**.
@@ -29,13 +29,15 @@ screen on a global shortcut.
   an event tap. Check again on the target macOS version.
 - Launch at login (optional, in config) so the hotkey is always ready.
 
-## Config example
+## Settings example
 
-```text
-hotkey = option+space
-hotkey-position = top
-hotkey-height = 45%
-hotkey-screen = mouse
-hotkey-autohide = true
-hotkey-animation = 0.12
+```json
+"hotkey": {
+  "shortcut": "cmd+shift+backslash",
+  "position": "top",
+  "height": "45%",
+  "screen": "mouse",
+  "autohide": true,
+  "animation": 0.12
+}
 ```
