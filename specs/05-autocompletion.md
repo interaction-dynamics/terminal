@@ -71,12 +71,20 @@ For the text typed so far, candidates are past commands that **start with it**
    - "Generators" (for example listing git branches) run shell commands in
      the background with a timeout (300 ms) and cached results.
    - Bundle a pinned copy of the specs. Check the licence before bundling.
+   - **Built so far:** native generators instead (git subcommands and
+     branches, npm/bun/pnpm/yarn scripts from `package.json`, make targets).
+     Fig specs come later.
 4. **History** fills in when nothing else matches.
 
 ## Performance
 
 - Distinct commands loaded into memory at launch (deduplicated with counts),
   SQLite only for writes and Ctrl+R detail.
+- The index keeps every distinct command in byte order (one binary search per
+  prefix). When a short prefix matches thousands of commands, the app uses a
+  list ranked once per prompt, off the main thread, instead of scoring them
+  all. Measured: < 0.1 ms per lookup over 200,000 commands; ranking takes
+  ~70 ms in the background when the prompt comes back.
 - Ghost text lookup ≤ 5 ms per keystroke with 200,000 history entries.
 - Every lookup runs off the main thread and is cancelled by the next keystroke.
 - Tab menu appears ≤ 50 ms for paths and specs (generators may fill in later).

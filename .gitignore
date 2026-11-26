@@ -17,3 +17,13 @@ node_modules/
 # Local env
 .env
 .env*.local
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# libghostty build (bun scripts/build-libghostty.ts)
+Vendor/ghostty/src/
+Vendor/ghostty/GhosttyKit.xcframework/
+Vendor/ghostty/share/
+Vendor/ghostty/build.log

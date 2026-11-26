@@ -48,16 +48,27 @@ not inside it.
   a known-good path. cmux is an outside app that embeds it the same way.
 - **The API is not officially stable.** Pin libghostty to one Ghostty commit
   or release. Upgrade on purpose, never automatically.
-- Built with Zig as an xcframework and linked into the Xcode project. The exact
-  build steps must be confirmed against the pinned Ghostty version and written
-  into `scripts/` (Bun/TypeScript).
+- Pinned to **Ghostty v1.4.0**, built with Zig 0.17.1 (pinned in `mise.toml`)
+  as `GhosttyKit.xcframework` by `scripts/build-libghostty.ts`. Needs Xcode's
+  Metal Toolchain. The app is a Swift package (`Package.swift`) linking that
+  xcframework; `scripts/bundle.ts` assembles and signs `Terminal.app`.
+- **Conditional config breaks per-surface options.** When the config uses a
+  `light:…,dark:…` theme, libghostty rebuilds each new surface's config from
+  the file and drops the env vars and command the app passes. The app
+  resolves light/dark itself and hands libghostty a plain theme.
 - Ghostty is MIT-licensed. Keep its licence file in the repo.
 
 ## Shell integration
 
-- Reuse Ghostty's shell integration scripts (zsh, bash, fish) to emit prompt
-  marks and the current folder. Inject them automatically when a shell starts,
-  so the user's dotfiles don't need changes.
+- **Our own scripts**, not Ghostty's: Ghostty's shell integration is GPL-3.0,
+  unlike the rest of Ghostty, so it is neither reused nor bundled. They live in
+  `App/Resources/shell-integration/` and are injected when a shell starts
+  (zsh: `ZDOTDIR` points at ours, which then loads the user's), so dotfiles
+  don't need changes.
+- zsh: `precmd` emits OSC 133;D (exit code) and OSC 7 (folder, host
+  `localhost` because libghostty only accepts a local host), `preexec` emits
+  OSC 133;C. OSC 7 at each prompt is how the app knows the prompt is ready.
+  With the smart input on, the shell's own prompt is emptied.
 - **zsh first** (the macOS default), then fish and bash.
 
 ## Threads
@@ -67,20 +78,25 @@ not inside it.
 - **Background queue:** history queries, ranking, completion specs, file
   listing. Every query is cancellable: a new keystroke cancels the old one.
 
-## Repo layout (proposal)
+## Repo layout
 
 ```text
 terminal/
 ├── README.md
 ├── CLAUDE.md               # rules for agents working in this repo
 ├── specs/                  # this folder
-├── App/                    # Xcode project, Swift sources
-│   ├── Windows/            # hotkey window, normal windows
-│   ├── TabBar/
-│   ├── Engine/             # TerminalSurface + libghostty wrapper
-│   ├── Input/              # smart input text box
-│   ├── Completion/         # history store, ranking, specs runner
-│   └── Config/
+├── Package.swift           # Swift package: the app and its tests
+├── App/
+│   ├── Sources/Terminal/
+│   │   ├── App/            # launch, menus
+│   │   ├── Windows/        # hotkey window, normal windows
+│   │   ├── Tabs/           # sessions, tab bar
+│   │   ├── Engine/         # TerminalSurface + libghostty wrapper
+│   │   ├── Input/          # smart input text box
+│   │   ├── Completion/     # history store, ranking, completers
+│   │   └── Config/
+│   ├── Resources/          # shell integration scripts
+│   └── Tests/
 ├── Vendor/ghostty/         # pinned libghostty build output
 └── scripts/                # Bun/TypeScript tooling (build libghostty, bench)
 ```
