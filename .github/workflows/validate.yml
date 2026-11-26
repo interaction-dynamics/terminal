@@ -1,0 +1,94 @@
+name: Validate Code
+# Runs on pull requests only: the push to master after a merge would repeat the checks the
+# pull request already passed (ADR 0048). Run it by hand from the Actions tab when needed.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+  id-token: write
+env:
+  # Turborepo groups each task's output until the task ends when it detects CI, so a slow
+  # build or type check looks hung. Stream it so the log shows how far a slow step got.
+  TURBO_LOG_ORDER: stream
+jobs:
+  build:
+    name: Validate Code
+    # ubuntu-slim ends a job at 15 minutes; a slow runner hit that limit before (ADR 0043, 0048).
+    runs-on: ubuntu-slim
+    # Normal runs take about 3 minutes; fail a stalled run early with a timeout message.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26.13.1'
+      - name: Install root 🔧
+        run: bun install --ignore-scripts --frozen-lockfile
+      - name: Decision Record Numbers 📝
+        run: bun run check-adr-numbers
+      - name: Feature Spec Numbers 📋
+        run: bun run check-spec-numbers
+      - name: Format 👕
+        run: |
+          bun lint
+          bun format
+      - name: Architecture Boundaries 🧱
+        run: bun run lint:boundaries
+      - name: Feature Folders 🗂️
+        run: bun run check-features
+      - name: Auth Schema 🔐
+        run: bun run check-auth-schema
+      - name: Unused Code 🧹
+        run: bun run knip
+        env:
+          # oxc-parser's raw transfer reserves a multi-GB ArrayBuffer per
+          # parse, which fails on the small ubuntu-slim runner (ADR 0030).
+          KNIP_DISABLE_RAW_TRANSFER: '1'
+      - name: Type Check 🔍
+        run: bun run check-types
+      - name: Unit Tests ✔️
+        run: bun test:ci
+        working-directory: ./apps/web
+      - name: Adapter Unit Tests ✔️
+        run: bun test:ci
+        working-directory: ./infrastructure/adapters
+      - name: Build 📦
+        run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  e2e_tests:
+    name: End-to-end Tests
+    runs-on: ubuntu-slim
+    # One minute under the ubuntu-slim job limit, so a stalled run ends with a timeout message.
+    timeout-minutes: 14
+    permissions:
+      contents: read
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26.13.1'
+      - name: Install 🔧
+        run: bun install --ignore-scripts --frozen-lockfile
+      - name: Build 📦
+        run: bun run build
+      - name: Install browsers 🌐
+        run: bunx playwright install --with-deps
+        working-directory: ./apps/web
+      - name: End-to-end Tests ✔️
+        run: bun run test:e2e
+        working-directory: ./apps/web
+      - name: Upload traces 📎
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-test-results
+          path: apps/web/test-results/
+          retention-days: 7

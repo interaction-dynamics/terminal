@@ -1,0 +1,87 @@
+# Dependabot cannot see transitive packages in bun.lock, so this is the only check that does.
+# See .docs/decisions/0018-audit-transitive-dependencies-in-ci.md.
+name: Audit Dependencies
+on:
+  pull_request:
+    branches: [master]
+    # An advisory is published regardless of the diff, so do not fail unrelated PRs for it.
+    # The weekly run below catches advisories between dependency changes.
+    paths:
+      - bun.lock
+      - '**/package.json'
+      - .github/workflows/audit.yml
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    name: Audit Dependencies
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - name: Audit 🔍
+        env:
+          NO_COLOR: 1
+        # bun audit exits 1 both for advisories and for a failed registry request.
+        # Only the first prints a "N vulnerabilities" line, so use it to tell them apart.
+        run: |
+          report="$RUNNER_TEMP/bun-audit.txt"
+          status=0
+          bun audit --audit-level=high > "$report" 2>&1 || status=$?
+          cat "$report"
+
+          if [ "$status" -eq 0 ]; then
+            echo "No high or critical advisories." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if grep -q "vulnerabilit" "$report"; then
+            title="High or critical npm advisories found"
+            help="An advisory published since the last run fails this check too, so the cause may not be this change. Run bun audit fix, or see .docs/decisions/0018-audit-transitive-dependencies-in-ci.md to accept one."
+          else
+            title="bun audit could not run"
+            help="The audit did not finish, so this does not report an advisory. Re-run the job."
+          fi
+
+          echo "::error title=$title::$help"
+          {
+            echo "## $title"
+            echo
+            echo "$help"
+            echo
+            echo '```'
+            cat "$report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+  # Nobody watches a scheduled run, and GitHub only notifies whoever last edited the cron line.
+  report:
+    name: Report Failed Weekly Audit
+    needs: audit
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-slim
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update issue 📣
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Weekly dependency audit failed"
+          body="The weekly \`bun audit --audit-level=high\` run failed: $RUN_URL
+
+          The run summary lists the advisories, or says that the audit could not run.
+          Close this issue once \`bun audit --audit-level=high\` exits 0."
+
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // See .docs/decisions/0030-detect-unused-code-with-knip.md.
+  // Plugins (next, playwright, vitest, drizzle, commitlint, lefthook, …) are
+  // auto-enabled from each workspace's dependencies. Config paths are set
+  // explicitly below so non-default locations are still picked up.
+  "workspaces": {
+    ".": {
+      // Claude Code hook, referenced from .claude/settings.json.
+      "entry": [".agents/hooks/*.ts"],
+      // Loaded at runtime by dependency-cruiser as its TypeScript parser
+      // (it cannot use TypeScript 7 yet); never imported. See ADR 0026.
+      "ignoreDependencies": ["@swc/core"],
+      "commitlint": {
+        "config": [".config/commitlint.config.ts"],
+      },
+      "lefthook": {
+        "config": [".config/lefthook.yml"],
+      },
+    },
+    "apps/web": {
+      // Next.js App Router file conventions. The next plugin covers most of
+      // these already; listed here so `.md`/`.mdx` pages (pageExtensions)
+      // and `mdx-components.tsx` are never reported as unused.
+      "entry": [
+        "src/{instrumentation,instrumentation-client,proxy,mdx-components}.{ts,tsx}",
+        "src/app/**/{page,layout,template,default,loading,error,not-found,route}.{ts,tsx,md,mdx}",
+        "src/app/{global-error,global-not-found}.{ts,tsx}",
+      ],
+      "next": {
+        "config": ["next.config.ts"],
+      },
+      "playwright": {
+        "config": ["playwright.config.ts"],
+        "entry": ["e2e/**/*.{spec,test}.ts"],
+      },
+      "vitest": {
+        "config": ["vitest.config.ts"],
+        "entry": ["src/**/*.test.{ts,tsx}", "vitest.setup.ts"],
+      },
+    },
+    // Entry points come from the package.json `exports` map (the capability
+    // folders), so every public adapter path is treated as used.
+    "infrastructure/adapters": {
+      "drizzle": {
+        "config": ["drizzle.config.ts"],
+      },
+      "vitest": {
+        "config": ["vitest.config.ts"],
+        "entry": ["src/**/*.test.{ts,tsx}"],
+      },
+    },
+    "domain/entities": {},
+    "config/*": {},
+  },
+  // Vendored third-party agent skill (tasteskill); its scripts are run by
+  // agents with `node`, never imported. See ADR 0050.
+  "ignore": [".agents/skills/design-taste-frontend/**"],
+  "ignoreIssues": {
+    // shadcn/ui primitives are vendored upstream code (regenerated with the
+    // shadcn CLI); keep their full export surface even when the app only
+    // uses part of it.
+    "apps/web/src/components/ui/**": ["exports", "types"],
+    // App-level adapter wrappers re-export the whole port so feature code
+    // can use any of it without editing the wrapper (ADR 0020).
+    "apps/web/src/adapters/authentication/index.tsx": ["exports"],
+    "apps/web/src/adapters/email/index.ts": ["exports", "types"],
+    // Client counterpart of the server `formatDatetime` helper; kept so the
+    // boilerplate offers both halves of the API.
+    "apps/web/src/lib/format-datetime/client.tsx": ["exports"],
+  },
+}

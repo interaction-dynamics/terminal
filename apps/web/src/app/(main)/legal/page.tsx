@@ -1,0 +1,20 @@
+import type { MDXContent } from 'mdx/types';
+import { getTranslations } from '@/adapters/translation';
+
+export default async function LegalPage() {
+  const { locale } = await getTranslations();
+
+  // you need to use relative imports for dynamic imports with a variable;
+  // such an import is typed `any`, so state the MDX module shape explicitly
+  const { default: TermsOfService } = (await import(
+    `../../../content/markdown/${locale}/terms-of-service.mdx`
+  )) as { default: MDXContent };
+
+  return (
+    <div className="px-2 py-10">
+      <div className="container max-w-2xl m-auto ">
+        <TermsOfService />
+      </div>
+    </div>
+  );
+}

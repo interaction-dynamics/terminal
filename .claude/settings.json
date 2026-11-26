@@ -1,0 +1,55 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun install:*)",
+      "Bash(bun dev:*)",
+      "Bash(bun run build:*)",
+      "Bash(bun run lint:*)",
+      "Bash(bun run format:*)",
+      "Bash(bun run test:*)",
+      "Bash(bun run test:e2e:*)",
+      "Bash(bun run format)",
+      "Bash(git fetch:*)",
+      "Bash(bunx oxlint:*)",
+      "Bash(bunx oxfmt:*)",
+      "Bash(bunx vitest run:*)",
+      "mcp__github__get_file_contents",
+      "mcp__github__pull_request_read",
+      "mcp__github__list_pull_requests",
+      "mcp__github__list_commits",
+      "mcp__github__list_branches",
+      "mcp__github__search_code",
+      "mcp__github__search_pull_requests",
+      "mcp__github__search_issues",
+      "mcp__github__issue_read",
+      "mcp__github__list_issues",
+      "mcp__github__get_commit",
+      "mcp__github__get_me"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run .agents/hooks/prepush-check.ts",
+            "timeout": 600,
+            "statusMessage": "Running pre-push checks (format, lint, commitlint, affected build/check-types/test:ci)..."
+          }
+        ]
+      }
+    ]
+  }
+}
