@@ -158,6 +158,8 @@ final class CompletionTests: XCTestCase {
     func testHotKeyParse() {
         XCTAssertNotNil(HotKey.parse("option+space"))
         XCTAssertNotNil(HotKey.parse("cmd+shift+`"))
+        XCTAssertNotNil(HotKey.parse("cmd+shift+backslash"))
+        XCTAssertEqual(HotKey.parse("cmd+shift+backslash")?.0, HotKey.parse("cmd+shift+\\")?.0)
         XCTAssertNil(HotKey.parse("cmd+shift"))
     }
 }

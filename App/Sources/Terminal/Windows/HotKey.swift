@@ -3,6 +3,11 @@ import Carbon.HIToolbox
 
 /// A global shortcut through Carbon's RegisterEventHotKey: works from any app
 /// and needs no Accessibility permission (unlike an event tap).
+///
+/// Carbon hot keys use physical key codes, so punctuation keys (`\`, `` ` ``,
+/// `[`…) are looked up in the current keyboard layout: on a French layout
+/// `\` is not on the US key. The owner re-registers when the layout changes
+/// (see `HotKey.onLayoutChange`).
 final class HotKey {
     private var ref: EventHotKeyRef?
     private static var handlerInstalled = false
@@ -10,16 +15,26 @@ final class HotKey {
     private static var nextID: UInt32 = 1
     private let id: UInt32
 
-    /// `spec` looks like "option+space", "cmd+shift+t", "ctrl+`".
+    /// Why the last registration failed, for the log.
+    static var lastError: String?
+
+    /// `spec` looks like "cmd+shift+backslash", "option+space", "ctrl+`".
     init?(spec: String, action: @escaping () -> Void) {
-        guard let (keyCode, mods) = HotKey.parse(spec) else { return nil }
+        guard let (keyCode, mods) = HotKey.parse(spec) else {
+            HotKey.lastError = "unknown key in \"\(spec)\""
+            return nil
+        }
         HotKey.installHandler()
         id = HotKey.nextID
         HotKey.nextID += 1
         HotKey.actions[id] = action
         let hotKeyID = EventHotKeyID(signature: OSType(0x5452_4D4C), id: id) // "TRML"
         let status = RegisterEventHotKey(keyCode, mods, hotKeyID, GetApplicationEventTarget(), 0, &ref)
+        Debug.log("hotkey \(spec): key code \(keyCode), modifiers \(mods), status \(status)")
         guard status == noErr else {
+            // eventHotKeyExistsErr (-9878): another app already owns this shortcut.
+            HotKey.lastError = status == OSStatus(eventHotKeyExistsErr)
+                ? "\"\(spec)\" is already used by another app" : "RegisterEventHotKey failed (\(status))"
             HotKey.actions[id] = nil
             return nil
         }
@@ -30,22 +45,31 @@ final class HotKey {
         HotKey.actions[id] = nil
     }
 
+    /// Calls `body` whenever the user switches keyboard layout.
+    static func onLayoutChange(_ body: @escaping () -> Void) -> NSObjectProtocol {
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
+            object: nil, queue: .main) { _ in body() }
+    }
+
     private static func installHandler() {
         guard !handlerInstalled else { return }
         handlerInstalled = true
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+        let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
             var hk = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &hk)
             if let action = HotKey.actions[hk.id] { DispatchQueue.main.async(execute: action) }
             return noErr
         }, 1, &spec, nil, nil)
+        Debug.log("hotkey handler installed: status \(status)")
     }
 
     static func parse(_ spec: String) -> (UInt32, UInt32)? {
         var mods: UInt32 = 0
         var key: UInt32?
+        // "+" itself can't be a key here; "plus" can.
         for raw in spec.lowercased().split(separator: "+") {
             let part = raw.trimmingCharacters(in: .whitespaces)
             switch part {
@@ -53,14 +77,59 @@ final class HotKey {
             case "opt", "option", "alt": mods |= UInt32(optionKey)
             case "ctrl", "control": mods |= UInt32(controlKey)
             case "shift": mods |= UInt32(shiftKey)
-            default: key = keyCodes[part]
+            default: key = keyCode(for: part)
             }
         }
         guard let key else { return nil }
         return (key, mods)
     }
 
-    private static let keyCodes: [String: UInt32] = {
+    /// Named keys first, then the character in the current layout, then the US position.
+    static func keyCode(for name: String) -> UInt32? {
+        if let code = namedKeys[name] { return code }
+        let char = punctuationNames[name] ?? name
+        guard char.count == 1 else { return nil }
+        if let code = layoutKeyCodes()[char] { return code }
+        return usKeyCodes[char]
+    }
+
+    /// Character → key code in the current keyboard layout (no modifiers).
+    static func layoutKeyCodes() -> [String: UInt32] {
+        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return [:] }
+        let data = Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
+        var map: [String: UInt32] = [:]
+        data.withUnsafeBytes { raw in
+            guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return }
+            for code in UInt16(0)..<128 {
+                var dead: UInt32 = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                var len = 0
+                let status = UCKeyTranslate(layout, code, UInt16(kUCKeyActionDown), 0, UInt32(LMGetKbdType()),
+                                            OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &len, &chars)
+                guard status == noErr, len == 1 else { continue }
+                let s = String(utf16CodeUnits: chars, count: len).lowercased()
+                if map[s] == nil { map[s] = UInt32(code) }
+            }
+        }
+        return map
+    }
+
+    private static let namedKeys: [String: UInt32] = [
+        "space": UInt32(kVK_Space), "return": UInt32(kVK_Return), "enter": UInt32(kVK_Return),
+        "tab": UInt32(kVK_Tab), "escape": UInt32(kVK_Escape), "esc": UInt32(kVK_Escape),
+        "f1": UInt32(kVK_F1), "f2": UInt32(kVK_F2), "f3": UInt32(kVK_F3), "f4": UInt32(kVK_F4),
+        "f5": UInt32(kVK_F5), "f6": UInt32(kVK_F6), "f7": UInt32(kVK_F7), "f8": UInt32(kVK_F8),
+        "f9": UInt32(kVK_F9), "f10": UInt32(kVK_F10), "f11": UInt32(kVK_F11), "f12": UInt32(kVK_F12),
+    ]
+
+    private static let punctuationNames: [String: String] = [
+        "backslash": "\\", "grave": "`", "backtick": "`", "minus": "-", "equal": "=", "plus": "=",
+        "semicolon": ";", "quote": "'", "comma": ",", "period": ".", "slash": "/",
+        "leftbracket": "[", "rightbracket": "]",
+    ]
+
+    private static let usKeyCodes: [String: UInt32] = {
         var m: [String: UInt32] = [
             "space": UInt32(kVK_Space), "return": UInt32(kVK_Return), "enter": UInt32(kVK_Return),
             "tab": UInt32(kVK_Tab), "escape": UInt32(kVK_Escape), "esc": UInt32(kVK_Escape),

@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var dropdown: HotkeyWindowController!
     private var hotKey: HotKey?
     private var appearanceObservation: NSKeyValueObservation?
+    private var layoutObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let config = ConfigStore.shared
@@ -20,6 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = MainMenu.build()
         dropdown = HotkeyWindowController()
         registerHotKey()
+        // Punctuation keys move between layouts: look the key up again.
+        layoutObserver = HotKey.onLayoutChange { [weak self] in self?.registerHotKey() }
         applyLaunchAtLogin()
         config.onReload = { [weak self] in
             self?.registerHotKey()
@@ -57,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey = nil
         let spec = ConfigStore.shared.config.hotkey
         hotKey = HotKey(spec: spec) { [weak self] in self?.dropdown.toggle() }
-        if hotKey == nil { NSLog("Could not register hotkey %@", spec) }
+        if hotKey == nil { NSLog("Could not register hotkey % %@", spec, HotKey.lastError ?? "unknown error") }
     }
 
     private func applyLaunchAtLogin() {

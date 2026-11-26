@@ -26,7 +26,7 @@ struct AppConfig {
     }
 
     // Hotkey window (specs/03-hotkey-window.md)
-    var hotkey = "option+space"
+    var hotkey = "cmd+shift+backslash"
     var hotkeyPosition = Edge.top
     var hotkeyHeight = Size.percent(0.45)
     var hotkeyWidth = Size.percent(1)
@@ -151,7 +151,7 @@ struct AppConfig {
         let starter = """
         # Terminal config. Reloaded when saved.
         # App options:
-        # hotkey = option+space
+        # hotkey = cmd+shift+backslash
         # hotkey-position = top        # top, bottom, left, right, center
         # hotkey-height = 45%
         # hotkey-width = 100%
