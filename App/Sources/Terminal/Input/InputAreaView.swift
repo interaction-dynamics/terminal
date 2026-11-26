@@ -77,7 +77,7 @@ final class InputAreaView: NSView {
 
 /// Folder, git branch, last exit status and duration, drawn above the input box.
 final class PromptLineView: NSView {
-    static let height: CGFloat = 18
+    static var height: CGFloat { ceil(max(9, CGFloat(ConfigStore.shared.fontSize) - 1) * 1.5) }
     var directory = "~" { didSet { needsDisplay = true } }
     var branch: String? { didSet { needsDisplay = true } }
     var exitCode: Int? { didSet { needsDisplay = true } }
@@ -88,8 +88,9 @@ final class PromptLineView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let theme = Theme.current
-        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
-        let regular = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let size = max(9, CGFloat(ConfigStore.shared.fontSize) - 1)
+        let font = NSFont.monospacedSystemFont(ofSize: size, weight: .medium)
+        let regular = NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
         let line = NSMutableAttributedString()
         line.append(NSAttributedString(string: directory, attributes: [.font: font, .foregroundColor: theme.accent]))
         if let branch {

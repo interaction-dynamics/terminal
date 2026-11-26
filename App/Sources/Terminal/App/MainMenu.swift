@@ -37,8 +37,8 @@ enum MainMenu {
         ]))
 
         main.addItem(submenu("View", [
-            item("Bigger", #selector(AppDelegate.increaseFontSize(_:)), "+"),
-            item("Smaller", #selector(AppDelegate.decreaseFontSize(_:)), "-"),
+            item("Zoom In", #selector(AppDelegate.increaseFontSize(_:)), "="),
+            item("Zoom Out", #selector(AppDelegate.decreaseFontSize(_:)), "-"),
             item("Actual Size", #selector(AppDelegate.resetFontSize(_:)), "0"),
             .separator(),
             item("Toggle Hotkey Window", #selector(AppDelegate.toggleDropdown(_:)), ""),

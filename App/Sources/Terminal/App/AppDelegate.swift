@@ -114,9 +114,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func clearScreen(_ sender: Any?) { current?.content.active?.surface.sendKey(.clearScreen) }
 
-    @objc func increaseFontSize(_ sender: Any?) { current?.content.active?.surface.perform("increase_font_size:1") }
-    @objc func decreaseFontSize(_ sender: Any?) { current?.content.active?.surface.perform("decrease_font_size:1") }
-    @objc func resetFontSize(_ sender: Any?) { current?.content.active?.surface.perform("reset_font_size") }
+    // Zoom applies to every window and to the app's own chrome.
+    @objc func increaseFontSize(_ sender: Any?) { ConfigStore.shared.zoom(by: 1) }
+    @objc func decreaseFontSize(_ sender: Any?) { ConfigStore.shared.zoom(by: -1) }
+    @objc func resetFontSize(_ sender: Any?) { ConfigStore.shared.zoom(by: 0) }
 
     @objc func openConfig(_ sender: Any?) {
         AppConfig.writeStarterIfMissing()

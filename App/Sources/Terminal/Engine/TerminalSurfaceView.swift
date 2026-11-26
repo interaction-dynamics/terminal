@@ -27,7 +27,7 @@ final class TerminalSurfaceView: NSView, TerminalSurface {
         cfg.platform_tag = GHOSTTY_PLATFORM_MACOS
         cfg.platform = ghostty_platform_u(macos: ghostty_platform_macos_s(nsview: Unmanaged.passUnretained(self).toOpaque()))
         cfg.scale_factor = scale
-        cfg.font_size = 0
+        cfg.font_size = Float(ConfigStore.shared.fontSize)
         cfg.context = GHOSTTY_SURFACE_CONTEXT_TAB
 
         let keys = Array(options.environment.keys)
@@ -45,6 +45,14 @@ final class TerminalSurfaceView: NSView, TerminalSurface {
             return ghostty_surface_new(app, &cfg)
         }
         updateTrackingAreas()
+        // Zoomed: mark the size as chosen so a config reload (light/dark switch) keeps it.
+        if ConfigStore.shared.zoom != 0 { fontSizeChanged() }
+        NotificationCenter.default.addObserver(self, selector: #selector(fontSizeChanged), name: .terminalFontSizeChanged, object: nil)
+    }
+
+    @objc private func fontSizeChanged() {
+        let ok = perform("set_font_size:\(ConfigStore.shared.fontSize)")
+        Debug.log("font size \(ConfigStore.shared.fontSize): \(ok)")
     }
 
     required init?(coder: NSCoder) { fatalError("not supported") }

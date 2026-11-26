@@ -19,6 +19,7 @@ struct TerminalColors {
 extension Notification.Name {
     /// The terminal theme changed (light/dark switch or config reload).
     static let terminalThemeChanged = Notification.Name("terminalThemeChanged")
+    static let terminalFontSizeChanged = Notification.Name("terminalFontSizeChanged")
 }
 
 /// App-wide libghostty state: one `ghostty_app_t` for every surface.

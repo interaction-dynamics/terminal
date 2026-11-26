@@ -73,12 +73,33 @@ final class ConfigStore {
     private var watcher: ConfigWatcher?
     var onReload: (() -> Void)?
 
-    var fontSize: Double {
+    /// Font size from the config, before zoom.
+    var baseFontSize: Double {
         for line in config.ghosttyLines.reversed() {
             let p = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
             if p.count == 2, p[0] == "font-size", let v = Double(p[1]) { return v }
         }
-        return 14
+        return AppConfig.defaultFontSize
+    }
+
+    /// Zoom (⌘+ / ⌘− / ⌘0) in points, for every window and the app's own chrome.
+    /// Not saved: each launch starts at the configured size.
+    private(set) var zoom: Double = 0
+    static let zoomRange: ClosedRange<Double> = 8...36
+
+    var fontSize: Double { min(max(baseFontSize + zoom, Self.zoomRange.lowerBound), Self.zoomRange.upperBound) }
+
+    /// Each surface applies the size itself (libghostty's `set_font_size`):
+    /// no config reload, so zooming costs one font grid per surface.
+    func zoom(by step: Double) {
+        zoom = step == 0 ? 0 : min(max(baseFontSize + zoom + step, Self.zoomRange.lowerBound), Self.zoomRange.upperBound) - baseFontSize
+        applyFontSize()
+    }
+
+    private func applyFontSize() {
+        Theme.current = Theme.make()
+        NotificationCenter.default.post(name: .terminalFontSizeChanged, object: nil)
+        NotificationCenter.default.post(name: .terminalThemeChanged, object: nil)
     }
 
     func load() {
@@ -95,7 +116,8 @@ final class ConfigStore {
     private func reload() {
         config = AppConfig.load()
         TerminalEngine.shared.reload(configText: ghosttyConfigText)
-        Theme.current = Theme.make()
+        // Surfaces keep the size they were given: send the configured one again.
+        applyFontSize()
         onReload?()
     }
 

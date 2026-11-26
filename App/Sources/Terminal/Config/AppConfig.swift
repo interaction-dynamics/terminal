@@ -45,9 +45,11 @@ struct AppConfig {
     /// Defaults for the look (specs/02-look.md). The user's own lines come after
     /// and win. `shell-integration` and `keybind` are forced: the app injects its
     /// own shell integration and owns the shortcuts.
+    static let defaultFontSize = 12.0
+
     static let ghosttyDefaults = """
     theme = light:GitHub Light Default,dark:GitHub Dark Default
-    font-size = 14
+    font-size = \(Int(defaultFontSize))
     window-padding-x = 16
     window-padding-y = 12
     window-padding-balance = true
@@ -164,7 +166,7 @@ struct AppConfig {
         # Any Ghostty option works too, for example:
         # theme = Catppuccin Mocha
         # font-family = JetBrains Mono
-        # font-size = 14
+        # font-size = 12
         # background-opacity = 0.92
 
         """
