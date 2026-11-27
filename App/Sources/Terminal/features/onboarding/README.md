@@ -12,7 +12,7 @@ Welcomes a new user and walks them through the theme, the shell and the hotkey w
 
 - `Onboarding` shows a borderless, rounded window at first launch (and from Show Onboarding…), with the progress at the bottom left and the buttons at the bottom right.
 - One file per page in `Pages/`: welcome, theme, shell, hotkey window, done. Choices are written to the config as they are made.
-- Reuses the theme cards, shell cards and shortcut recorder of the Settings tab.
+- Reuses the theme cards (Settings), the shell cards (Shell choice) and the shortcut recorder (Hotkey window).
 
 ## Related
 
