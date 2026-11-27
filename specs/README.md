@@ -62,3 +62,4 @@ decision and a performance check.
 8. [Open questions](08-open-questions.md)
 9. [Rules for agents](agent-rules.md)
 10. [Settings](09-settings.md)
+11. [Releases and updates](10-updates.md)

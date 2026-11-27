@@ -18,3 +18,9 @@ bun scripts/bundle.ts --open                   # builds build/Terminal.app and o
 
 `swift test` runs the logic tests (config, history ranking, completion).
 Launch with `TERMINAL_DEBUG=1` to print shell events to stderr.
+
+## Release
+
+`git tag v0.2.0 && git push origin v0.2.0` builds and publishes a GitHub
+release; the app offers it to installed copies. One-time setup and details:
+[specs/10-updates.md](specs/10-updates.md).

@@ -18,7 +18,8 @@ targets: measure Ghostty on the same Mac first and aim to match it.
 ## Rules
 
 - **Nothing runs in the background unless the user is using it.** No timers,
-  no polling, no network.
+  no polling, no network. One decided exception: the update check, at launch
+  and every 24 h in release builds ([updates](10-updates.md)).
 - **Main thread does UI only.** Anything slower than 1 ms moves off it.
 - **The hotkey window is never rebuilt**, only shown and hidden.
 - **Every new feature gets a before/after measurement** of the table above.

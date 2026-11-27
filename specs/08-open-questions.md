@@ -13,7 +13,8 @@
 6. **Fig specs licence.** Confirm it allows bundling before M5.
 7. **libghostty version to pin.** Latest stable Ghostty release at M0 time
    (1.4.x at the time of writing, to confirm).
-8. **Distribution.** Personal use only (local build), or signed and notarised
-   for others too?
+8. **Distribution.** Decided: GitHub releases, ad-hoc signed for now, with an
+   in-app updater. Notarisation later if others use it. See
+   [updates](10-updates.md).
 9. **Tab side.** Decided: left by default, like the Warp screenshot. Right
    and top stay available as a setting.

@@ -15,7 +15,8 @@ autocompletion). Every change serves one of them.
   default, accounts, sync, telemetry, blocks, plugins, settings window) without
   an explicit decision from Thibault.
 - Nothing runs in the background unless the user is using it. No timers,
-  polling or network calls.
+  polling or network calls. One decided exception: the update check (at
+  launch and every 24 h, release builds only), see `specs/10-updates.md`.
 - The main thread does UI only.
 - Every feature is checked against `specs/06-performance.md` before it ships.
   If typing gets slower, it doesn't ship.
