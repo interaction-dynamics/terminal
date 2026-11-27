@@ -10,6 +10,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     let sidebar = TabSidebarView()
     let menuButton = NSButton()
     let input = InputAreaView()
+    let updateBanner = UpdateBanner()
     private let terminalContainer = NSView()
     private var settingsView: SettingsView?
     /// The Settings tab is in the tab list (after the shells)…
@@ -48,12 +49,15 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         root.menuButton = menuButton
         root.terminal = terminalContainer
         root.input = input
+        root.banner = updateBanner
         root.addSubview(terminalContainer)
         root.addSubview(titleBar)
         root.addSubview(tabBar)
         root.addSubview(sidebar)
         root.addSubview(input)
+        root.addSubview(updateBanner)
         root.addSubview(menuButton)
+        updateBanner.onVisibilityChange = { [weak self] in self?.root.needsLayout = true }
         input.textView.smartDelegate = self
         tabBar.onSelect = { [weak self] i in self?.select(i) }
         tabBar.onClose = { [weak self] i in self?.closeTab(at: i) }
@@ -79,6 +83,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         for v in [root, titleBar, tabBar, sidebar] as [NSView] { v.needsDisplay = true }
         refresh()
         input.applyTheme()
+        updateBanner.applyTheme()
     }
 
     // MARK: Menu button
@@ -483,6 +488,7 @@ final class ContentRootView: NSView {
     weak var terminal: NSView?
     weak var input: InputAreaView?
     weak var settings: NSView?
+    weak var banner: UpdateBanner?
     /// Height of the title strip; 0 when the dropdown's sidebar takes the top.
     private var titleHeight: CGFloat = Theme.tabBarHeight
 
@@ -522,6 +528,14 @@ final class ContentRootView: NSView {
             if left { body.origin.x = w }
         } else {
             tabBar?.frame = NSRect(x: 0, y: 0, width: bounds.width - g - 20, height: titleH)
+        }
+        // The update banner sits at the top of the terminal area, above the
+        // terminal or the Settings tab.
+        if let banner, !banner.isHidden {
+            let h = UpdateBanner.Tuning.height
+            banner.frame = NSRect(x: body.minX, y: body.minY, width: body.width, height: h)
+            body.origin.y += h
+            body.size.height = max(0, body.size.height - h)
         }
         settings?.frame = body
 

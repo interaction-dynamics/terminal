@@ -23,6 +23,8 @@ struct Release: Equatable {
     let notes: String
     let zipURL: URL
     let signatureURL: URL
+    /// The release's page on GitHub (its notes), when known.
+    var pageURL: URL? = nil
 
     /// Reads GitHub's "latest release" JSON. Nil when the release has no
     /// `Terminal-<version>.zip` and `.zip.sig` pair (nothing to install).
@@ -39,7 +41,8 @@ struct Release: Equatable {
         }
         let zip = "\(UpdateTuning.appName)-\(version).zip"
         guard let zipURL = url(named: zip), let sigURL = url(named: zip + ".sig") else { return nil }
-        return Release(version: version, notes: (json["body"] as? String) ?? "", zipURL: zipURL, signatureURL: sigURL)
+        return Release(version: version, notes: (json["body"] as? String) ?? "", zipURL: zipURL, signatureURL: sigURL,
+                       pageURL: (json["html_url"] as? String).flatMap(URL.init(string:)))
     }
 }
 
@@ -72,16 +75,31 @@ enum UpdateError: LocalizedError {
     }
 }
 
-/// Checks GitHub Releases, asks, then downloads, verifies, swaps the app and
-/// relaunches. Only in release builds (`bun scripts/bundle.ts --version`).
+extension Notification.Name {
+    /// `Updater.shared.state` changed: windows show, update or hide the banner.
+    static let terminalUpdateState = Notification.Name("TerminalUpdateState")
+}
+
+/// Checks GitHub Releases, offers the update in a banner at the top of the
+/// windows, then downloads, verifies, swaps the app and relaunches. Only in release builds (`bun scripts/bundle.ts --version`).
 /// Network and file work run off the main thread; the main thread only shows
 /// the alerts.
 final class Updater: NSObject {
     static let shared = Updater()
 
+    /// What the banner shows.
+    enum State: Equatable {
+        case none
+        case available(Release)
+        case installing(Release)
+    }
+
+    private(set) var state: State = .none {
+        didSet { if state != oldValue { NotificationCenter.default.post(name: .terminalUpdateState, object: self) } }
+    }
+
     private var timer: Timer?
     private var busy = false
-    private var activationObserver: NSObjectProtocol?
     private let defaults = UserDefaults.standard
     private static let lastCheckKey = "update.lastCheck"
     private static let skippedKey = "update.skippedVersion"
@@ -165,23 +183,33 @@ final class Updater: NSObject {
                 return
             }
             if !userInitiated, defaults.string(forKey: Self.skippedKey) == release.version { return }
-            whenActive { [weak self] in self?.offer(release) }
+            if case .installing = state { return }
+            // A background check never interrupts: the banner waits at the top
+            // of the windows. Check for Updates… answers with an alert as well.
+            state = .available(release)
+            if userInitiated { offer(release) }
         }
     }
 
-    /// A background check doesn't pop an alert over another app: it waits
-    /// until the user comes back to this one.
-    private func whenActive(_ action: @escaping () -> Void) {
-        if NSApp.isActive { action(); return }
-        if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
-        activationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            if let o = self.activationObserver { NotificationCenter.default.removeObserver(o) }
-            self.activationObserver = nil
-            action()
-        }
+    // MARK: Banner actions
+
+    @objc func installAvailable(_ sender: Any?) {
+        if case .available(let release) = state { install(release) }
+    }
+
+    @objc func skipAvailable(_ sender: Any?) {
+        if case .available(let release) = state { defaults.set(release.version, forKey: Self.skippedKey) }
+        state = .none
+    }
+
+    /// Hides the banner until the next check finds the update again.
+    @objc func dismissAvailable(_ sender: Any?) {
+        if case .available = state { state = .none }
+    }
+
+    @objc func openReleaseNotes(_ sender: Any?) {
+        guard case .available(let release) = state else { return }
+        NSWorkspace.shared.open(release.pageURL ?? URL(string: "https://github.com/\(UpdateTuning.repository)/releases")!)
     }
 
     private func offer(_ release: Release) {
@@ -198,8 +226,8 @@ final class Updater: NSObject {
         alert.addButton(withTitle: "Skip This Version")
         switch alert.runModal() {
         case .alertFirstButtonReturn: install(release)
-        case .alertThirdButtonReturn: defaults.set(release.version, forKey: Self.skippedKey)
-        default: break
+        case .alertThirdButtonReturn: skipAvailable(nil)
+        default: break   // Later: the banner stays
         }
     }
 
@@ -208,10 +236,12 @@ final class Updater: NSObject {
     private func install(_ release: Release) {
         guard let key = publicKey, !busy else { return }
         busy = true
+        state = .installing(release)
         Debug.log("updates: downloading \(release.version)")
         let fail: (Error) -> Void = { [weak self] error in
             DispatchQueue.main.async {
                 self?.busy = false
+                self?.state = .available(release)
                 self?.inform("The update failed", error.localizedDescription)
             }
         }

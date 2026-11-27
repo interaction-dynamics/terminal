@@ -65,6 +65,13 @@ The shell's own line editor is bypassed, so these are rebuilt in the input box:
 
 - Drawn by us above the input box: current folder, git branch, last exit
   status, and how long the last command took.
+- Folder and branch are Warp-style chips: a small icon and the text in a
+  rounded outline, in neutral colours. A long folder is cut from the start
+  (`…worktrees/hello-58bd80`); when the line is too narrow the branch chip
+  goes first. A detached HEAD shows the short commit hash. Chip sizes live in
+  `PromptLineView.Chip`.
+- No "files changed" chip like Warp's `± 0` for now: it needs `git status`,
+  a process per prompt, which the lean rule rules out.
 - The shell integration sets the shell's own prompt to empty inside this
   terminal only, so it is not drawn twice.
 - Inline mode (fallback, see [open questions](08-open-questions.md)): keep the

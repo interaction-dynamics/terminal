@@ -39,9 +39,14 @@ Builds are for Apple silicon (libghostty is built for the runner's arch).
   24 h while the app runs, and from **Check for Updates…** in the app menu.
   This is the one exception to "no network calls": one small request to
   GitHub's latest-release API, nothing sent about the user.
-- **Found a newer version:** an alert with the release notes and three
-  choices: **Install and Relaunch**, **Later**, **Skip This Version**. A
-  background check waits until the app is in front before asking.
+- **Found a newer version:** a banner at the top of the terminal area of
+  every window (like Warp's notices): "The Terminal 0.3.0 is available. You
+  have 0.2.0." on the left; **Release Notes**, **Install and Relaunch**,
+  **Skip This Version** and a close button on the right. Closing hides it
+  until the next check finds the version again. A background check never
+  pops an alert; **Check for Updates…** also answers with an alert (same three
+  choices, **Later** leaves the banner up). While installing, the banner says
+  it is downloading. Its look lives in `UpdateBanner.Tuning`.
 - **Install:** download the `.sig` and the zip, check the signature, unzip
   with `ditto`, check the bundle id and version, swap the app in place, and
   relaunch once the old process has exited. All of this runs off the main
