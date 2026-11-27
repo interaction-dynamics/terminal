@@ -7,6 +7,7 @@ enum MainMenu {
 
         main.addItem(submenu("App", [
             item("About \(name)", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), target: NSApp),
+            item("Check for Updates…", #selector(Updater.checkFromMenu(_:)), target: Updater.shared),
             .separator(),
             item("Settings…", #selector(AppDelegate.openSettings(_:)), ","),
             item("Open Config File", #selector(AppDelegate.openConfig(_:)), ""),

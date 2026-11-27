@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 @testable import Terminal
 
@@ -193,5 +194,41 @@ final class CompletionTests: XCTestCase {
         XCTAssertNotNil(HotKey.parse("cmd+shift+backslash"))
         XCTAssertEqual(HotKey.parse("cmd+shift+backslash")?.0, HotKey.parse("cmd+shift+\\")?.0)
         XCTAssertNil(HotKey.parse("cmd+shift"))
+    }
+}
+
+final class UpdateTests: XCTestCase {
+    func testVersionOrder() {
+        XCTAssertTrue(Version.isNewer("0.10.0", than: "0.9.3"))
+        XCTAssertTrue(Version.isNewer("1.0", than: "0.99.99"))
+        XCTAssertTrue(Version.isNewer("0.2.1", than: "0.2"))
+        XCTAssertFalse(Version.isNewer("0.2.0", than: "0.2.0"))
+        XCTAssertFalse(Version.isNewer("0.2.0-beta", than: "0.2.0"))
+        XCTAssertFalse(Version.isNewer("0.1.9", than: "0.2.0"))
+    }
+
+    func testParseRelease() throws {
+        let json = """
+        {"tag_name": "v0.3.0", "body": "Notes", "draft": false, "prerelease": false, "assets": [
+          {"name": "Terminal-0.3.0.zip", "browser_download_url": "https://example.com/a.zip"},
+          {"name": "Terminal-0.3.0.zip.sig", "browser_download_url": "https://example.com/a.zip.sig"}
+        ]}
+        """
+        let r = try XCTUnwrap(Release.parse(Data(json.utf8)))
+        XCTAssertEqual(r.version, "0.3.0")
+        XCTAssertEqual(r.zipURL.absoluteString, "https://example.com/a.zip")
+        XCTAssertEqual(r.signatureURL.absoluteString, "https://example.com/a.zip.sig")
+        // No signature asset: nothing to install.
+        XCTAssertNil(try Release.parse(Data(#"{"tag_name": "v0.3.0", "assets": [{"name": "Terminal-0.3.0.zip", "browser_download_url": "https://x/y"}]}"#.utf8)))
+    }
+
+    func testSignature() {
+        let key = Curve25519.Signing.PrivateKey()
+        let data = Data("release zip".utf8)
+        let sig = try! key.signature(for: data).base64EncodedString()
+        let pub = Updater.publicKey(base64: key.publicKey.rawRepresentation.base64EncodedString())!
+        XCTAssertTrue(Updater.verify(data, signatureBase64: sig, key: pub))
+        XCTAssertFalse(Updater.verify(Data("tampered".utf8), signatureBase64: sig, key: pub))
+        XCTAssertFalse(Updater.verify(data, signatureBase64: "not base64!", key: pub))
     }
 }

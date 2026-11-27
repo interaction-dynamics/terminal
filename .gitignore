@@ -27,3 +27,6 @@ Vendor/ghostty/src/
 Vendor/ghostty/GhosttyKit.xcframework/
 Vendor/ghostty/share/
 Vendor/ghostty/build.log
+
+# Release output (bun scripts/release-package.ts)
+dist/

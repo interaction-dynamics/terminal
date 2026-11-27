@@ -8,7 +8,8 @@
 #
 # With TERMINAL_SMART_INPUT=1 the shell's own prompt is emptied: the app draws
 # its own prompt line and input box. The terminal cursor is hidden at the
-# prompt, and the folder header is drawn when a command is accepted, right above it. Nothing changes outside this terminal.
+# prompt, and the folder header is drawn when a command is accepted, right
+# above it. Nothing changes outside this terminal.
 
 if [[ -n "${TERMINAL_ZSH_ZDOTDIR+X}" ]]; then
     builtin export ZDOTDIR="$TERMINAL_ZSH_ZDOTDIR"

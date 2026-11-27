@@ -35,6 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         newWindow(nil)
+        // Release builds only: one check at launch (if a day old), then daily.
+        Updater.shared.start()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
