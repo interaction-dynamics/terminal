@@ -7,7 +7,8 @@
 #   preexec -> OSC 133;C (command started)
 #
 # With TERMINAL_SMART_INPUT=1 the shell's own prompt is emptied: the app draws
-# its own prompt line and input box. Nothing changes outside this terminal.
+# its own prompt line and input box. The terminal cursor is hidden at the
+# prompt, and the folder header is drawn when a command is accepted, right above it. Nothing changes outside this terminal.
 
 if [[ -n "${TERMINAL_ZSH_ZDOTDIR+X}" ]]; then
     builtin export ZDOTDIR="$TERMINAL_ZSH_ZDOTDIR"
@@ -73,16 +74,29 @@ fi
             fi
         }
 
-        # Dim header for the next command: folder and branch.
+        # Dim header above a command (folder and branch), as prompt text in REPLY.
         _terminal_block_header() {
             _terminal_branch
             builtin local where=${(%):-%~}
             [[ -n $REPLY ]] && where+=" git:($REPLY)"
-            builtin printf '\e[2m%s\e[0m\n' "$where"
+            REPLY="%{"$'\e[2m'"%}${where//\%/%%}%{"$'\e[0m'"%}"
+        }
+
+        # While waiting, the prompt is empty and the cursor hidden: the app's
+        # input box is the prompt. On Enter, the header is drawn in place of the
+        # empty prompt, so it sits right above the command in the scrollback.
+        _terminal_accept_line() {
+            if [[ "$TERMINAL_SMART_INPUT" == 1 && -n ${BUFFER//[[:space:]]/} ]]; then
+                _terminal_block_header
+                PROMPT=$REPLY$'\n'
+                zle reset-prompt
+                PROMPT=''
+            fi
+            zle _terminal_orig_accept_line
         }
 
         _terminal_precmd() {
-            builtin local exit_status=$? ran=$_terminal_running first=$_terminal_first
+            builtin local exit_status=$? ran=$_terminal_running
             if (( _terminal_running )); then
                 builtin printf '\e]133;D;%s\a' "$exit_status"
                 _terminal_running=0
@@ -95,17 +109,24 @@ fi
                 _terminal_first=0
                 # Run after every other precmd hook (themes set PROMPT in theirs).
                 precmd_functions=(${precmd_functions:#_terminal_precmd} _terminal_precmd)
+                # Wrap accept-line after .zshrc, keeping any plugin's own wrapper.
+                if [[ "$TERMINAL_SMART_INPUT" == 1 ]]; then
+                    zle -A accept-line _terminal_orig_accept_line
+                    zle -N accept-line _terminal_accept_line
+                fi
             fi
             if [[ "$TERMINAL_SMART_INPUT" == 1 ]]; then
                 PROMPT='' RPROMPT='' PS2=''
                 (( ran )) && _terminal_block_end $exit_status
-                (( ran || first )) && _terminal_block_header
+                builtin printf '\e[?25l'
             fi
         }
 
         _terminal_preexec() {
             _terminal_running=1
             _terminal_started=$EPOCHREALTIME
+            # The program gets the terminal: show the cursor again.
+            [[ "$TERMINAL_SMART_INPUT" == 1 ]] && builtin printf '\e[?25h'
             builtin printf '\e]133;C\a'
         }
 
