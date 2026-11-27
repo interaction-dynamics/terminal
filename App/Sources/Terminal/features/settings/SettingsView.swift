@@ -320,7 +320,3 @@ final class SettingsView: NSView {
         AppConfig.update("launch-at-login", to: launchAtLogin.state == .on ? "true" : "false")
     }
 }
-
-class FlippedView: NSView {
-    override var isFlipped: Bool { true }
-}
