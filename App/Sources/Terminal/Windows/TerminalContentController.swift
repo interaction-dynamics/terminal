@@ -143,8 +143,9 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     }
 
     private func sessionChanged(_ s: Session) {
-        // A background tab that finished a command gets a dot until it is viewed.
-        if s !== active, s.state == .atPrompt { bells.insert(s.id) }
+        // A background tab that finished a command gets a dot until it is viewed
+        // (not one that just started its shell).
+        if s !== active, s.state == .atPrompt, s.previousCommand != nil { bells.insert(s.id) }
         refresh()
         if s === active, s.state == .atPrompt, root.window?.firstResponder === s.surface.view {
             focusActive()
@@ -161,7 +162,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         guard let s = active else { return }
         onTitleChange?(s.label)
         titleBar.title = s.label
-        let showInput = s.state == .atPrompt && ConfigStore.shared.config.smartInput
+        let showInput = s.acceptsInput && ConfigStore.shared.config.smartInput
         if input.isHidden == showInput {
             input.isHidden = !showInput
             if !showInput { hidePopup() }

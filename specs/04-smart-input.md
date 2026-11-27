@@ -17,6 +17,7 @@ Driven by the prompt marks from shell integration (OSC 133):
 
 | State | Between | Input box | Keys go to |
 |---|---|---|---|
+| Starting | new tab → first prompt (falls back to "No integration" after 3 s) | Visible, focused; a command sent now runs at the first prompt | The input box |
 | At prompt | input start → command started | Visible, focused | The input box |
 | Running | command started → command finished | Hidden | The program (PTY) |
 | Full-screen | alternate screen on | Hidden, terminal fills the window | The program (PTY) |

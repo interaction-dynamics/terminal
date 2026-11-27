@@ -3,7 +3,10 @@ import AppKit
 /// One tab: a shell, its terminal surface and the smart-input state (specs/04-smart-input.md).
 final class Session: TerminalSurfaceDelegate {
     enum State: Equatable {
-        /// No prompt mark seen yet (or none ever: ssh, other shells). Plain terminal.
+        /// Our shell integration is loading. The smart input is already shown so
+        /// early typing lands there, not in the raw terminal.
+        case starting
+        /// No prompt mark seen (ssh, other shells, broken integration). Plain terminal.
         case noIntegration
         /// The shell waits for a command: the smart input is shown.
         case atPrompt
@@ -28,6 +31,11 @@ final class Session: TerminalSurfaceDelegate {
     private var lastHistoryID: Int64?
     private var commandStartedAt: Date?
     var draft = ""
+    /// A command submitted before the first prompt: runs as soon as it appears.
+    private(set) var pendingCommand: String?
+
+    /// How long to wait for the first prompt before falling back to a plain terminal.
+    static let startupTimeout: TimeInterval = 3
 
     init(workingDirectory: String?, smartInput: Bool) {
         let cwd = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
@@ -39,25 +47,43 @@ final class Session: TerminalSurfaceDelegate {
             if let existing = ProcessInfo.processInfo.environment["ZDOTDIR"] { env["TERMINAL_ZSH_ZDOTDIR"] = existing }
             env["ZDOTDIR"] = integration.path
             env["TERMINAL_SMART_INPUT"] = smartInput ? "1" : "0"
+            if smartInput { state = .starting }
         }
         Debug.log("[\(id)] new session env: \(env)")
         surface = TerminalSurfaceView(options: SurfaceOptions(workingDirectory: cwd, environment: env))
         surface.delegate = self
         refreshGit()
+        if state == .starting {
+            // One-shot, not polling: if the integration never reports a prompt
+            // (a zshrc that breaks it), hand the keyboard to the terminal.
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.startupTimeout) { [weak self] in
+                guard let self, self.state == .starting else { return }
+                Debug.log("[\(self.id)] no prompt after \(Self.startupTimeout)s: plain terminal")
+                self.state = .noIntegration
+                if let pending = self.pendingCommand {
+                    self.pendingCommand = nil
+                    self.surface.sendText(pending)
+                    self.surface.sendKey(.enter)
+                }
+                self.onChange?(self)
+            }
+        }
     }
+
+    /// Whether the smart input takes the keyboard.
+    var acceptsInput: Bool { state == .atPrompt || (state == .starting && pendingCommand == nil) }
 
     static var userShell: String {
         if let pw = getpwuid(getuid()), let shell = pw.pointee.pw_shell { return String(cString: shell) }
         return ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
     }
 
-    /// Label for the tab: the running command, else the folder name.
+    /// Label for the tab: the running command, else the folder name
+    /// ("Home" for ~, so a tab never reads as a lone "~").
     var label: String {
-        if state == .running, let cmd = runningCommand {
-            return String(cmd.split(separator: " ").first ?? Substring(cmd))
-        }
+        if state == .running, let cmd = runningCommand { return cmd }
         if !title.isEmpty, state == .noIntegration { return title }
-        return cwd == NSHomeDirectory() ? "~" : (cwd as NSString).lastPathComponent
+        return cwd == NSHomeDirectory() ? "Home" : (cwd as NSString).lastPathComponent
     }
 
     var displayDirectory: String {
@@ -74,6 +100,12 @@ final class Session: TerminalSurfaceDelegate {
     func submit(_ command: String) {
         let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
         draft = ""
+        if state == .starting {
+            // The shell isn't ready: keep it for the first prompt.
+            pendingCommand = command
+            onChange?(self)
+            return
+        }
         if trimmed.isEmpty {
             surface.sendKey(.enter)
             return
@@ -124,6 +156,10 @@ final class Session: TerminalSurfaceDelegate {
         runningCommand = nil
         onChange?(self)
         HistoryStore.shared.prepare(rankContext)
+        if let pending = pendingCommand {
+            pendingCommand = nil
+            submit(pending)
+        }
     }
 
     func surface(_ surface: TerminalSurface, didFinishCommandWithExitCode code: Int?, durationMs: Int) {

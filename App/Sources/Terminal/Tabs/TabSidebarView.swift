@@ -89,7 +89,7 @@ final class TabSidebarView: NSView {
                 .foregroundColor: item.active ? theme.foreground : theme.foreground.withAlphaComponent(0.8),
                 .paragraphStyle: truncating,
             ])
-            if !item.detail.isEmpty, item.detail != item.label {
+            if !item.detail.isEmpty {
                 let head: NSParagraphStyle = {
                     let p = NSMutableParagraphStyle()
                     p.lineBreakMode = .byTruncatingHead
