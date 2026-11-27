@@ -381,10 +381,3 @@ final class ShellPickerView: NSView {
         onPick?(shells[i])
     }
 }
-
-extension Shells {
-    /// Saves the choice: the login shell is the default, so it removes the line.
-    static func choose(_ path: String) {
-        AppConfig.update("shell", to: path == login ? nil : path)
-    }
-}

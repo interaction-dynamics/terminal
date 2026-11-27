@@ -88,13 +88,19 @@ terminal/
 ├── Package.swift           # Swift package: the app and its tests
 ├── App/
 │   ├── Sources/Terminal/
-│   │   ├── App/            # launch, menus
-│   │   ├── Windows/        # hotkey window, normal windows
-│   │   ├── Tabs/           # sessions, tab bar
+│   │   ├── App/            # launch, menus, About window
+│   │   ├── Windows/        # normal windows, window content (tabs + terminal + input)
+│   │   ├── HotkeyWindow/   # the dropdown and the global shortcut
+│   │   ├── Tabs/           # sessions, tab bar, sidebar
 │   │   ├── Engine/         # TerminalSurface + libghostty wrapper
-│   │   ├── Input/          # smart input text box
+│   │   ├── Input/          # smart input text box, prompt line
 │   │   ├── Completion/     # history store, ranking, completers
-│   │   └── Config/
+│   │   ├── Git/            # branch and repo root, read from .git
+│   │   ├── Shell/          # installed shells, the chosen one
+│   │   ├── Config/         # config file, themes
+│   │   ├── Settings/       # the Settings tab and its controls
+│   │   ├── Onboarding/     # first-launch window, one file per page
+│   │   └── Update/         # updater and its banner
 │   ├── Resources/          # shell integration scripts
 │   └── Tests/
 ├── Vendor/ghostty/         # pinned libghostty build output
