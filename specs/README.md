@@ -64,3 +64,4 @@ decision and a performance check.
 10. [Settings](09-settings.md)
 11. [Releases and updates](10-updates.md)
 12. [Onboarding](11-onboarding.md)
+13. [Feature breakdown](12-feature-breakdown.md)
