@@ -30,12 +30,20 @@ final class Session: TerminalSurfaceDelegate {
     private(set) var previousCommand: String?
     private var lastHistoryID: Int64?
     private var commandStartedAt: Date?
+    /// The shell reported the running command's exit code and duration.
+    private var finishReported = false
     var draft = ""
     /// A command submitted before the first prompt: runs as soon as it appears.
     private(set) var pendingCommand: String?
 
     /// How long to wait for the first prompt before falling back to a plain terminal.
     static let startupTimeout: TimeInterval = 3
+    /// A command shows as running (input box hidden, tab named after it) only
+    /// once it has run this long, so quick commands don't make the window flash.
+    static let runningRevealDelay: TimeInterval = 0.3
+    /// The UI shows the command as running (see `runningRevealDelay`).
+    private(set) var runningRevealed = false
+    private var revealWork: DispatchWorkItem?
 
     init(workingDirectory: String?, smartInput: Bool) {
         let cwd = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
@@ -80,11 +88,15 @@ final class Session: TerminalSurfaceDelegate {
     /// Whether the smart input takes the keyboard.
     var acceptsInput: Bool { state == .atPrompt || (state == .starting && pendingCommand == nil) }
 
+    /// Whether the input box is on screen: when it takes the keyboard, and
+    /// during the first moments of a command (the keys already go to it).
+    var showsInput: Bool { acceptsInput || (state == .running && !runningRevealed) }
+
 
     /// Label for the tab: the running command, else the folder name
     /// ("Home" for ~, so a tab never reads as a lone "~").
     var label: String {
-        if state == .running, let cmd = runningCommand { return cmd }
+        if state == .running, runningRevealed, let cmd = runningCommand { return cmd }
         if !title.isEmpty, state == .noIntegration { return title }
         return cwd == NSHomeDirectory() ? "Home" : (cwd as NSString).lastPathComponent
     }
@@ -115,9 +127,19 @@ final class Session: TerminalSurfaceDelegate {
         }
         state = .running
         runningCommand = trimmed
+        runningRevealed = false
+        revealWork?.cancel()
+        let reveal = DispatchWorkItem { [weak self] in
+            guard let self, self.state == .running else { return }
+            self.runningRevealed = true
+            self.onChange?(self)
+        }
+        revealWork = reveal
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.runningRevealDelay, execute: reveal)
         commandStartedAt = Date()
-        lastExitCode = nil
-        lastDurationMs = nil
+        // The prompt line keeps the previous status until the new one arrives,
+        // so it doesn't blink.
+        finishReported = false
         let entry = HistoryEntry(
             command: trimmed, cwd: cwd, gitRoot: gitRoot, exitCode: nil,
             startedAt: Int64(Date().timeIntervalSince1970 * 1000), durationMs: nil,
@@ -151,12 +173,16 @@ final class Session: TerminalSurfaceDelegate {
             cwd = path
             refreshGit()
         }
-        if wasRunning, let started = commandStartedAt, lastDurationMs == nil {
+        if wasRunning, let started = commandStartedAt, !finishReported {
+            lastExitCode = nil
             lastDurationMs = Int(Date().timeIntervalSince(started) * 1000)
         }
         commandStartedAt = nil
         state = .atPrompt
         runningCommand = nil
+        revealWork?.cancel()
+        revealWork = nil
+        runningRevealed = false
         onChange?(self)
         HistoryStore.shared.prepare(rankContext)
         if let pending = pendingCommand {
@@ -169,6 +195,7 @@ final class Session: TerminalSurfaceDelegate {
         Debug.log("[\(id)] finished: \(String(describing: code)) in \(durationMs) ms")
         lastExitCode = code
         lastDurationMs = durationMs
+        finishReported = true
         commandStartedAt = nil
         if let id = lastHistoryID { HistoryStore.shared.finish(id: id, exitCode: code, durationMs: durationMs) }
         onChange?(self)

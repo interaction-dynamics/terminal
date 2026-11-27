@@ -19,9 +19,15 @@ Driven by the prompt marks from shell integration (OSC 133):
 |---|---|---|---|
 | Starting | new tab → first prompt (falls back to "No integration" after 3 s) | Visible, focused; a command sent now runs at the first prompt | The input box |
 | At prompt | input start → command started | Visible, focused | The input box |
-| Running | command started → command finished | Hidden | The program (PTY) |
+| Running | command started → command finished | Stays for the first 0.3 s, then hidden | The program (PTY) |
 | Full-screen | alternate screen on | Hidden, terminal fills the window | The program (PTY) |
 | No integration | no prompt marks seen | Hidden | The program (PTY), plain terminal |
+
+Quick commands (`ls`, `cd`, `git status`) finish within 0.3 s
+(`Session.runningRevealDelay`): the box stays, the tab keeps its folder name
+and the prompt line keeps the previous status until the new one arrives, so
+nothing flashes. Longer commands then hide the box and name the tab after
+the command.
 
 The last row is the safety net: inside `ssh`, a container, or a shell without
 integration, the app behaves like a plain terminal.

@@ -188,7 +188,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         let title = settingsActive ? "Settings" : s.label
         onTitleChange?(title)
         titleBar.title = title
-        let showInput = !settingsActive && s.acceptsInput && ConfigStore.shared.config.smartInput
+        let showInput = !settingsActive && s.showsInput && ConfigStore.shared.config.smartInput
         if input.isHidden == showInput {
             input.isHidden = !showInput
             if !showInput { hidePopup() }
