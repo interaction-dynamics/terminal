@@ -15,5 +15,5 @@
    (1.4.x at the time of writing, to confirm).
 8. **Distribution.** Personal use only (local build), or signed and notarised
    for others too?
-9. **Tab side.** The spec says right by default (as asked), but the Warp
-   screenshot it is modelled on has them on the left. Confirm.
+9. **Tab side.** Decided: left by default, like the Warp screenshot. Right
+   and top stay available as a setting.

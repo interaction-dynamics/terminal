@@ -7,18 +7,22 @@ Thibault's current Warp setup.
 ## Layout (Warp-like)
 
 - **Vertical tab sidebar**, drawn by us (not native macOS tabs).
-  - **Position is a setting: right (default), left, or top** (horizontal tab
+  - **Position is a setting: left (default), right, or top** (horizontal tab
     bar). See [settings](09-settings.md).
-  - Top of the sidebar: a **"Search tabs…" field** and a **`+`** button.
+  - Top of the sidebar: a **"New tab" row** (`+`, `⌘T`); a **"Search tabs…"
+    field** comes later.
   - Each tab is a small card: an icon (shell, or the running program), the
     title (folder or running command, truncated with "…"), the full path
     below it in dim text, and its shortcut on the right (`⌘1`, `⌘2`…).
     The selected tab has a slightly lighter background and a thin border.
-  - Bottom of the sidebar: a **gear icon** that opens the
-    [settings](09-settings.md) as a tab.
-- **Terminal output** fills the rest of the window. Each finished command
-  shows a dim header line (folder, git branch, duration such as `(0.084s)`)
-  and is separated from the next by a thin line.
+- **Title strip** across the top of the window: traffic lights on the left,
+  the active tab's title in the middle (sidebar modes), and a **gear icon
+  always visible at the top-right**, for every tab position and in the hotkey
+  dropdown. The gear opens the [settings](09-settings.md) as a popup over the
+  terminal. The strip drags the window; double-click zooms it.
+- **Terminal output** fills the rest of the window. Each command starts with
+  a dim header line (folder, git branch) and ends with a thin line carrying
+  its exit code (when it failed, in red) and its duration such as `0.084s`.
 - **Input area pinned at the bottom**, like Warp: a small chip with the
   current folder, then the smart input text box. See
   [smart input](04-smart-input.md).
@@ -57,5 +61,8 @@ reuse Ghostty's theme files (the iTerm2 colour scheme collection).
 ## Feel
 
 - Animations short and optional (hotkey slide ≤ 150 ms; tab switch instant).
+- **Zoom**: `⌘+` / `⌘−` / `⌘0` change the text size in every window and the
+  app's own chrome (8–36 pt). Zoom is not saved: each launch starts at the
+  configured size.
 - No spinners, no splash screen, no "what's new" pop-ups.
 - Subtle separators, no heavy borders.

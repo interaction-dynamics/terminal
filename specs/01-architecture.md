@@ -104,5 +104,5 @@ terminal/
 ## Settings
 
 - One JSON file, `~/.config/terminal/settings.json`, edited by hand or
-  through the settings tab, kept in sync in real time.
+  through the settings popup, kept in sync in real time.
   See [settings](09-settings.md).

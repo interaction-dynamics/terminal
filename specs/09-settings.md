@@ -14,7 +14,7 @@ UI** to edit it. Both stay in sync in real time.
 {
   "theme": "midnight",
   "font": { "family": "JetBrains Mono", "size": 12 },
-  "tabs": { "position": "right", "width": 240 },
+  "tabs": { "position": "left", "width": 220 },
   "hotkey": {
     "shortcut": "cmd+shift+backslash",
     "position": "top",
@@ -31,10 +31,12 @@ UI** to edit it. Both stay in sync in real time.
 
 ## The settings UI
 
-- Opened by a **gear icon** in the tab sidebar (bottom of the sidebar), by
+- Opened by the **gear icon** at the top-right of the window's title strip
+  (always visible, whatever the tab position, also in the hotkey dropdown), by
   `⌘,`, or from the menu bar.
-- Opens **as a tab** in the terminal (like Warp's Settings tab), not as a
-  separate window. Pressing the gear again focuses that tab.
+- Opens **as a popup over the terminal**, anchored to the gear, not as a tab
+  or a separate window. **Esc** or a **click outside** closes it; pressing the
+  gear again closes it too.
 - Sections: **Appearance** (theme picker with live preview, font, size,
   padding, opacity), **Tabs** (position: left / right / top, width),
   **Hotkey** (record a shortcut, position, size, screen, autohide),
@@ -42,6 +44,14 @@ UI** to edit it. Both stay in sync in real time.
   the file in the default editor.
 - Every change applies **immediately** (no Save button) and is written to the
   file.
+
+> **Status (built so far):** the app still reads the first-cut
+> `~/.config/terminal/config` (Ghostty-style `key = value` lines; unknown keys
+> go to libghostty). The popup edits that file in place (other lines and
+> comments kept) and the file watcher applies the change. The popup has theme,
+> tab position, font size, hotkey (typed, e.g. `cmd+shift+backslash`), smart
+> input, open at login, and "Open config file…". Moving to `settings.json` and
+> the remaining sections is still to do.
 
 ## Real-time sync
 

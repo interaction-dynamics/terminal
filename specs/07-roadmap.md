@@ -19,13 +19,13 @@ Each milestone ends with something usable and a run of the
 
 ## M2: tabs (2–3 days)
 
-- Vertical tab sidebar (right by default; left or top in settings), in both the dropdown and normal windows, with tab search and `+`
+- Vertical tab sidebar (left by default; right or top in settings), in both the dropdown and normal windows, with tab search and `+`
 - ⌘T / ⌘W / ⌘1–9, labels from folder or running command
 
 ## M2.5: settings (2–3 days)
 
 - settings.json with live file watching (both directions)
-- Settings tab opened by the gear icon and ⌘,
+- Settings popup over the terminal, opened by the gear icon (title strip, top-right) and ⌘,
 - Theme switcher: midnight (default), graphite, frost, paper
 
 ## M3: smart input (1–2 weeks)
