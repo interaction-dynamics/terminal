@@ -2,7 +2,14 @@ import AppKit
 
 /// Warp-style tab bar drawn in the title bar: rounded tabs, folder or command as label, a `+` button.
 final class TabBarView: NSView {
-    struct Item { var label: String; var detail = ""; var active: Bool; var bell: Bool }
+    struct Item {
+        var label: String
+        var detail = ""
+        var active: Bool
+        var bell: Bool
+        /// SF Symbol drawn before the label (the Settings tab).
+        var symbol: String?
+    }
 
     var items: [Item] = [] { didSet { needsDisplay = true; updateTracking() } }
     var leadingInset: CGFloat = Theme.trafficLightsInset { didSet { needsDisplay = true } }

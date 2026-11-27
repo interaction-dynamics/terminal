@@ -25,7 +25,7 @@ Each milestone ends with something usable and a run of the
 ## M2.5: settings (2–3 days)
 
 - settings.json with live file watching (both directions)
-- Settings popup over the terminal, opened by the gear icon (title strip, top-right) and ⌘,
+- Settings tab with native controls, opened by ⌘, and the menu button (top-right); onboarding at first launch
 - Theme switcher: midnight (default), graphite, frost, paper
 
 ## M3: smart input (1–2 weeks)

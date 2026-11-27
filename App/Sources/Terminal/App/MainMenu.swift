@@ -3,11 +3,13 @@ import AppKit
 enum MainMenu {
     static func build() -> NSMenu {
         let main = NSMenu()
-        let name = ProcessInfo.processInfo.processName
+        let name = AppInfo.displayName
 
         main.addItem(submenu("App", [
-            item("About \(name)", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), target: NSApp),
-            item("Check for Updates…", #selector(Updater.checkFromMenu(_:)), target: Updater.shared),
+            item("About \(name)", #selector(AppDelegate.showAbout(_:))),
+            item("Check for Updates…", #selector(AppDelegate.checkForUpdates(_:))),
+            item("Show Onboarding…", #selector(AppDelegate.showOnboarding(_:))),
+            item("Send Feedback…", #selector(AppDelegate.sendFeedback(_:))),
             .separator(),
             item("Settings…", #selector(AppDelegate.openSettings(_:)), ","),
             item("Open Config File", #selector(AppDelegate.openConfig(_:)), ""),

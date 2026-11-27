@@ -1,21 +1,28 @@
 import AppKit
 
 /// Content of a terminal window (normal or hotkey): title strip with the
-/// settings gear, the tabs (sidebar or top bar), the active tab's terminal,
-/// and the smart input pinned at the bottom.
+/// menu button, the tabs (sidebar or top bar), the active tab's terminal (or
+/// the Settings tab), and the smart input pinned at the bottom.
 final class TerminalContentController: NSObject, SmartTextViewDelegate {
     let root = ContentRootView()
     let titleBar = TitleBarView()
     let tabBar = TabBarView()
     let sidebar = TabSidebarView()
-    let gear = NSButton()
+    let menuButton = NSButton()
     let input = InputAreaView()
     private let terminalContainer = NSView()
+    private var settingsView: SettingsView?
+    /// The Settings tab is in the tab list (after the shells)…
+    private(set) var settingsOpen = false
+    /// …and is the one showing.
+    private(set) var settingsActive = false
     private let popup = SuggestionPopup()
 
     private(set) var sessions: [Session] = []
     private(set) var activeIndex = 0
     var active: Session? { sessions.indices.contains(activeIndex) ? sessions[activeIndex] : nil }
+    /// Shells plus the Settings tab when it is open.
+    var tabCount: Int { sessions.count + (settingsOpen ? 1 : 0) }
     var onEmpty: (() -> Void)?
     var onTitleChange: ((String) -> Void)?
 
@@ -29,13 +36,16 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     private var popupMode = PopupMode.none
     private var historyMatches: [String] = []
 
-    init(leadingInset: CGFloat) {
+    /// `compactChrome`: the hotkey dropdown, with no title strip; the sidebar
+    /// runs from the top with + and the menu button in its first row.
+    init(leadingInset: CGFloat, compactChrome: Bool = false) {
         super.init()
         tabBar.leadingInset = leadingInset
+        root.compactChrome = compactChrome
         root.titleBar = titleBar
         root.tabBar = tabBar
         root.sidebar = sidebar
-        root.gear = gear
+        root.menuButton = menuButton
         root.terminal = terminalContainer
         root.input = input
         root.addSubview(terminalContainer)
@@ -43,7 +53,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         root.addSubview(tabBar)
         root.addSubview(sidebar)
         root.addSubview(input)
-        root.addSubview(gear)
+        root.addSubview(menuButton)
         input.textView.smartDelegate = self
         tabBar.onSelect = { [weak self] i in self?.select(i) }
         tabBar.onClose = { [weak self] i in self?.closeTab(at: i) }
@@ -51,27 +61,80 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         sidebar.onSelect = { [weak self] i in self?.select(i) }
         sidebar.onClose = { [weak self] i in self?.closeTab(at: i) }
         sidebar.onNew = { [weak self] in self?.newTab() }
-        gear.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
-        gear.isBordered = false
-        gear.imageScaling = .scaleProportionallyDown
-        gear.toolTip = "Settings (⌘,)"
-        gear.target = self
-        gear.action = #selector(showSettings)
-        gear.contentTintColor = Theme.current.dim
+        menuButton.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: "Menu")
+        menuButton.isBordered = false
+        menuButton.imageScaling = .scaleProportionallyDown
+        menuButton.toolTip = "Settings, updates, about…"
+        menuButton.target = self
+        menuButton.action = #selector(showMenu)
+        menuButton.contentTintColor = Theme.current.dim
         popup.onPick = { [weak self] i in self?.pickPopup(i) }
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged), name: .terminalThemeChanged, object: nil)
     }
 
     @objc func themeChanged() {
         Theme.current = Theme.make()
-        gear.contentTintColor = Theme.current.dim
+        menuButton.contentTintColor = Theme.current.dim
         root.needsLayout = true
         for v in [root, titleBar, tabBar, sidebar] as [NSView] { v.needsDisplay = true }
+        refresh()
         input.applyTheme()
     }
 
-    @objc func showSettings() {
-        SettingsPopover.shared.toggle(from: gear)
+    // MARK: Menu button
+
+    @objc func showMenu() {
+        let menu = NSMenu()
+        func add(_ title: String, _ action: Selector, _ target: AnyObject?, key: String = "") {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.target = target
+            menu.addItem(item)
+        }
+        let app = NSApp.delegate as AnyObject?
+        add("Settings…", #selector(openSettingsTab), self, key: ",")
+        add("Check for Updates…", #selector(AppDelegate.checkForUpdates(_:)), app)
+        add("Show Onboarding…", #selector(AppDelegate.showOnboarding(_:)), app)
+        add("Send Feedback…", #selector(AppDelegate.sendFeedback(_:)), app)
+        menu.addItem(.separator())
+        add("About \(AppInfo.displayName)", #selector(showAbout), self)
+        add("Quit \(AppInfo.displayName)", #selector(NSApplication.terminate(_:)), NSApp, key: "q")
+        menu.appearance = NSAppearance(named: Theme.current.background.brightness < 0.5 ? .darkAqua : .aqua)
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: menuButton.bounds.maxY + 4), in: menuButton)
+    }
+
+    @objc func showAbout() {
+        AboutPopover.shared.show(from: menuButton)
+    }
+
+    // MARK: Settings tab
+
+    /// Opens the Settings tab, or switches to it.
+    @objc func openSettingsTab() {
+        if settingsView == nil {
+            let v = SettingsView()
+            v.isHidden = true
+            root.addSubview(v, positioned: .below, relativeTo: menuButton)
+            root.settings = v
+            settingsView = v
+        }
+        settingsOpen = true
+        showSettings(true)
+    }
+
+    func closeSettingsTab() {
+        guard settingsOpen else { return }
+        settingsOpen = false
+        showSettings(false)
+    }
+
+    private func showSettings(_ show: Bool) {
+        settingsActive = show
+        settingsView?.isHidden = !show
+        terminalContainer.isHidden = show
+        active?.surface.setOccluded(show)
+        if show { hidePopup() }
+        refresh()
+        focusActive()
     }
 
     // MARK: Tabs
@@ -86,7 +149,14 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     }
 
     func select(_ index: Int) {
+        if index == sessions.count, settingsOpen { showSettings(true); return }
         guard sessions.indices.contains(index) else { return }
+        if settingsActive { showSettings(false) }
+        attach(index)
+    }
+
+    /// Puts shell `index` in the terminal area (behind Settings if that is showing).
+    private func attach(_ index: Int) {
         if let current = active, current !== sessions[index] {
             current.draft = input.textView.string
             current.surface.view.removeFromSuperview()
@@ -101,7 +171,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
             view.autoresizingMask = [.width, .height]
             terminalContainer.addSubview(view)
         }
-        s.surface.setOccluded(false)
+        s.surface.setOccluded(settingsActive)
         input.textView.text = s.draft
         historyCursor = nil
         hidePopup()
@@ -110,17 +180,20 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     }
 
     func selectNext(_ delta: Int) {
-        guard !sessions.isEmpty else { return }
-        select((activeIndex + delta + sessions.count) % sessions.count)
+        guard tabCount > 0 else { return }
+        let current = settingsActive ? sessions.count : activeIndex
+        select((current + delta + tabCount) % tabCount)
     }
 
     func closeActiveTab() {
+        if settingsActive { closeSettingsTab(); return }
         guard let s = active else { return }
         s.surface.close()
         remove(s)
     }
 
     func closeTab(at index: Int) {
+        if index == sessions.count, settingsOpen { closeSettingsTab(); return }
         guard sessions.indices.contains(index) else { return }
         let s = sessions[index]
         s.surface.close()
@@ -139,7 +212,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         activeIndex = min(activeIndex > i ? activeIndex - 1 : activeIndex, sessions.count - 1)
         let next = activeIndex
         activeIndex = -1
-        select(next)
+        attach(next)
     }
 
     private func sessionChanged(_ s: Session) {
@@ -147,22 +220,26 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
         // (not one that just started its shell).
         if s !== active, s.state == .atPrompt, s.previousCommand != nil { bells.insert(s.id) }
         refresh()
-        if s === active, s.state == .atPrompt, root.window?.firstResponder === s.surface.view {
+        if s === active, !settingsActive, s.state == .atPrompt, root.window?.firstResponder === s.surface.view {
             focusActive()
         }
     }
 
     /// Updates tab labels, the prompt line and which part has the keyboard.
     func refresh() {
-        let items = sessions.enumerated().map { i, s in
-            TabBarView.Item(label: s.label, detail: s.displayDirectory, active: i == activeIndex, bell: bells.contains(s.id))
+        var items = sessions.enumerated().map { i, s in
+            TabBarView.Item(label: s.label, detail: s.displayDirectory, active: !settingsActive && i == activeIndex, bell: bells.contains(s.id))
+        }
+        if settingsOpen {
+            items.append(TabBarView.Item(label: "Settings", active: settingsActive, bell: false, symbol: "gearshape"))
         }
         tabBar.items = items
         sidebar.items = items
         guard let s = active else { return }
-        onTitleChange?(s.label)
-        titleBar.title = s.label
-        let showInput = s.acceptsInput && ConfigStore.shared.config.smartInput
+        let title = settingsActive ? "Settings" : s.label
+        onTitleChange?(title)
+        titleBar.title = title
+        let showInput = !settingsActive && s.acceptsInput && ConfigStore.shared.config.smartInput
         if input.isHidden == showInput {
             input.isHidden = !showInput
             if !showInput { hidePopup() }
@@ -176,7 +253,9 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
 
     func focusActive() {
         guard let s = active, let window = root.window else { return }
-        if !input.isHidden {
+        if settingsActive {
+            window.makeFirstResponder(settingsView)
+        } else if !input.isHidden {
             window.makeFirstResponder(input.textView)
         } else {
             window.makeFirstResponder(s.surface.view)
@@ -184,7 +263,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     }
 
     func setOccluded(_ occluded: Bool) {
-        active?.surface.setOccluded(occluded)
+        active?.surface.setOccluded(occluded || settingsActive)
         if occluded { hidePopup() }
     }
 
@@ -396,39 +475,55 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
 /// Lays out title strip / tabs / terminal / input, and paints the translucent
 /// background behind the title strip.
 final class ContentRootView: NSView {
+    var compactChrome = false
     weak var titleBar: TitleBarView?
     weak var tabBar: TabBarView?
     weak var sidebar: TabSidebarView?
-    weak var gear: NSView?
+    weak var menuButton: NSView?
     weak var terminal: NSView?
     weak var input: InputAreaView?
+    weak var settings: NSView?
+    /// Height of the title strip; 0 when the dropdown's sidebar takes the top.
+    private var titleHeight: CGFloat = Theme.tabBarHeight
 
     override var isFlipped: Bool { true }
 
     override func layout() {
         super.layout()
         let config = ConfigStore.shared.config
-        let titleH = Theme.tabBarHeight
         let g = Theme.gearSize
+        let side = config.tabsPosition != .top
+        // The dropdown with a sidebar has no title strip: the sidebar starts at the top.
+        let compact = compactChrome && side
+        let titleH: CGFloat = compact ? 0 : Theme.tabBarHeight
+        titleHeight = titleH
+        titleBar?.isHidden = compact
         titleBar?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: titleH)
-        // The gear is always there, top-right, whatever the tab position.
-        gear?.frame = NSRect(x: bounds.width - g - 10, y: (titleH - g) / 2, width: g, height: g)
+        // The menu button is always there: top-right of the title strip, or of
+        // the dropdown's sidebar.
+        menuButton?.frame = NSRect(x: bounds.width - g - 10, y: (titleH - g) / 2, width: g, height: g)
 
         var body = NSRect(x: 0, y: titleH, width: bounds.width, height: max(0, bounds.height - titleH))
-        let side = config.tabsPosition != .top
         tabBar?.isHidden = side
         sidebar?.isHidden = !side
+        sidebar?.compactHeader = compact
         titleBar?.showsTitle = side
         if side {
             let w = min(config.tabsWidth, bounds.width / 2)
             let left = config.tabsPosition == .left
             sidebar?.edge = config.tabsPosition
-            sidebar?.frame = NSRect(x: left ? 0 : bounds.width - w, y: titleH, width: w, height: body.height)
+            let frame = NSRect(x: left ? 0 : bounds.width - w, y: titleH, width: w, height: body.height)
+            sidebar?.frame = frame
+            if compact, let header = sidebar?.headerRect {
+                let edge = left ? 1.0 : 0
+                menuButton?.frame = NSRect(x: frame.minX + header.maxX - g - 2 - edge, y: frame.minY + header.midY - g / 2, width: g, height: g)
+            }
             body.size.width -= w
             if left { body.origin.x = w }
         } else {
             tabBar?.frame = NSRect(x: 0, y: 0, width: bounds.width - g - 20, height: titleH)
         }
+        settings?.frame = body
 
         var inputH: CGFloat = 0
         if let input, !input.isHidden {
@@ -444,7 +539,8 @@ final class ContentRootView: NSView {
         // colour under the tab bar so it reads as one surface. The input area
         // paints its own.
         let theme = Theme.current
+        guard titleHeight > 0 else { return }
         theme.chromeBackground.setFill()
-        NSRect(x: 0, y: 0, width: bounds.width, height: Theme.tabBarHeight).fill()
+        NSRect(x: 0, y: 0, width: bounds.width, height: titleHeight).fill()
     }
 }

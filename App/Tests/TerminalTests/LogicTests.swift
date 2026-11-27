@@ -1,4 +1,5 @@
 import CryptoKit
+import AppKit
 import XCTest
 @testable import Terminal
 
@@ -59,6 +60,43 @@ final class ConfigTests: XCTestCase {
         AppConfig.update("tabs-position", to: "right")
         AppConfig.update("font-family", to: nil)
         XCTAssertEqual(try String(contentsOf: AppConfig.fileURL, encoding: .utf8), "# mine\ntheme = paper\ntabs-position = right\n")
+    }
+
+    func testHotkeyAndDock() {
+        let d = AppConfig.parse("")
+        XCTAssertTrue(d.hotkeyEnabled)
+        XCTAssertEqual(d.dockIcon, .auto)
+        let c = AppConfig.parse("hotkey-enabled = false\ndock-icon = never")
+        XCTAssertFalse(c.hotkeyEnabled)
+        XCTAssertEqual(c.dockIcon, .never)
+        XCTAssertEqual(AppConfig.parse("dock-icon = sometimes").dockIcon, .auto)
+    }
+
+    func testShells() {
+        XCTAssertEqual(AppConfig.parse("").shell, "")
+        XCTAssertEqual(AppConfig.parse("shell = auto").shell, "")
+        XCTAssertEqual(AppConfig.parse("shell = /bin/bash").shell, "/bin/bash")
+        XCTAssertEqual(Shells.parse("# List of shells\n/bin/bash\n\n  /bin/zsh \nnot-a-path"), ["/bin/bash", "/bin/zsh"])
+        XCTAssertEqual(Shells.resolved("/no/such/shell"), Shells.login)
+        XCTAssertEqual(Shells.resolved("/bin/bash"), "/bin/bash")
+        XCTAssertTrue(Shells.hasIntegration("/opt/homebrew/bin/zsh"))
+        XCTAssertFalse(Shells.hasIntegration("/bin/bash"))
+        XCTAssertTrue(Shells.available().contains("/bin/zsh"))
+    }
+
+    func testRecordedShortcuts() {
+        // kVK_ANSI_Backslash = 42, kVK_ANSI_T = 17, kVK_Space = 49, kVK_F5 = 96
+        XCTAssertEqual(HotKey.spec(keyCode: 42, character: "\\", modifiers: [.command, .shift]), "cmd+shift+backslash")
+        XCTAssertEqual(HotKey.spec(keyCode: 17, character: "t", modifiers: [.control, .option]), "ctrl+option+t")
+        XCTAssertEqual(HotKey.spec(keyCode: 49, character: " ", modifiers: [.option]), "option+space")
+        XCTAssertEqual(HotKey.spec(keyCode: 96, character: "", modifiers: []), "f5")
+        XCTAssertNil(HotKey.spec(keyCode: 17, character: "t", modifiers: []), "a bare letter would eat that letter")
+        XCTAssertNil(HotKey.spec(keyCode: 17, character: "t", modifiers: [.shift]))
+        XCTAssertEqual(HotKey.display("cmd+shift+backslash"), "⇧⌘\\")
+        XCTAssertEqual(HotKey.display("option+space"), "⌥Space")
+        XCTAssertEqual(HotKey.display("ctrl+cmd+t"), "⌃⌘T")
+        // Every recorded spec parses back.
+        for spec in ["cmd+shift+backslash", "ctrl+option+t", "option+space", "f5"] { XCTAssertNotNil(HotKey.parse(spec)) }
     }
 
     func testSizes() {

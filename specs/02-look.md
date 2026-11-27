@@ -16,10 +16,17 @@ Thibault's current Warp setup.
     below it in dim text, and its shortcut on the right (`⌘1`, `⌘2`…).
     The selected tab has a slightly lighter background and a thin border.
 - **Title strip** across the top of the window: traffic lights on the left,
-  the active tab's title in the middle (sidebar modes), and a **gear icon
-  always visible at the top-right**, for every tab position and in the hotkey
-  dropdown. The gear opens the [settings](09-settings.md) as a popup over the
-  terminal. The strip drags the window; double-click zooms it.
+  the active tab's title in the middle (sidebar modes), and a **menu button**
+  (`…` in a circle) always visible at the top-right. The strip drags the
+  window; double-click zooms it.
+- **Hotkey dropdown with a sidebar:** no title strip. The sidebar runs from
+  the top; its first row has a **+** (new tab) on the left and the menu button
+  on the right. With tabs on top, the dropdown keeps the strip.
+- **Menu button** opens a menu: Settings… (`⌘,`, opens the
+  [Settings tab](09-settings.md)), Check for Updates…, Show Onboarding…, Send
+  Feedback… (the GitHub issues page), then About (a small popover with the
+  name and version) and Quit. The same items are in the app menu, which matters
+  when the app is hidden from the Dock and has no menu bar.
 - **Terminal output** fills the rest of the window. Each command starts with
   a dim header line (folder, git branch) and ends with a thin line carrying
   its exit code (when it failed, in red) and its duration such as `0.084s`.

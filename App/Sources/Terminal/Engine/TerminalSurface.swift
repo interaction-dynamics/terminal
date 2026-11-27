@@ -48,4 +48,6 @@ extension TerminalSurfaceDelegate {
 struct SurfaceOptions {
     var workingDirectory: String?
     var environment: [String: String] = [:]
+    /// Program to run instead of the login shell (nil: libghostty's default).
+    var command: String?
 }

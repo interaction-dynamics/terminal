@@ -41,16 +41,23 @@ final class Session: TerminalSurfaceDelegate {
         let cwd = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
         self.cwd = cwd
         var env: [String: String] = ["TERMINAL_SESSION_ID": id, "TERM_PROGRAM": "Terminal-libghostty"]
+        let shell = Shells.resolved(ConfigStore.shared.config.shell)
         if let integration = Bundle.main.resourceURL?.appendingPathComponent("shell-integration/zsh"),
            FileManager.default.fileExists(atPath: integration.appendingPathComponent(".zshenv").path),
-           Self.userShell.hasSuffix("/zsh") {
+           Shells.hasIntegration(shell) {
             if let existing = ProcessInfo.processInfo.environment["ZDOTDIR"] { env["TERMINAL_ZSH_ZDOTDIR"] = existing }
             env["ZDOTDIR"] = integration.path
             env["TERMINAL_SMART_INPUT"] = smartInput ? "1" : "0"
             if smartInput { state = .starting }
         }
         Debug.log("[\(id)] new session env: \(env)")
-        surface = TerminalSurfaceView(options: SurfaceOptions(workingDirectory: cwd, environment: env))
+        // The login shell runs as libghostty starts it (a login shell); another
+        // one is started as a login shell too.
+        let command = shell == Shells.login ? nil : "\(shell) -l"
+        env["SHELL"] = shell
+        // macOS's bash prints a "default shell is now zsh" notice: the user chose bash.
+        if Shells.name(shell) == "bash" { env["BASH_SILENCE_DEPRECATION_WARNING"] = "1" }
+        surface = TerminalSurfaceView(options: SurfaceOptions(workingDirectory: cwd, environment: env, command: command))
         surface.delegate = self
         refreshGit()
         if state == .starting {
@@ -73,10 +80,6 @@ final class Session: TerminalSurfaceDelegate {
     /// Whether the smart input takes the keyboard.
     var acceptsInput: Bool { state == .atPrompt || (state == .starting && pendingCommand == nil) }
 
-    static var userShell: String {
-        if let pw = getpwuid(getuid()), let shell = pw.pointee.pw_shell { return String(cString: shell) }
-        return ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-    }
 
     /// Label for the tab: the running command, else the folder name
     /// ("Home" for ~, so a tab never reads as a lone "~").

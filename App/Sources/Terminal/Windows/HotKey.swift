@@ -84,6 +84,70 @@ final class HotKey {
         return (key, mods)
     }
 
+    // MARK: Recording a shortcut (settings, onboarding)
+
+    /// The spec for a key press, in the config's format ("cmd+shift+backslash").
+    /// `character` is what the key types with no modifiers in the current layout.
+    /// Nil unless it has cmd, ctrl or option (or is a function key): a hotkey
+    /// on a bare letter would eat that letter everywhere.
+    static func spec(keyCode: UInt16, character: String, modifiers: NSEvent.ModifierFlags) -> String? {
+        let name: String
+        if let named = namedKeyNames[UInt32(keyCode)] {
+            name = named
+        } else {
+            let c = character.lowercased()
+            guard c.count == 1 else { return nil }
+            name = punctuationNames.first { $0.value == c && canonicalPunctuation.contains($0.key) }?.key ?? c
+            guard name.count > 1 || c.first!.isLetter || c.first!.isNumber else { return nil }
+        }
+        var parts: [String] = []
+        if modifiers.contains(.command) { parts.append("cmd") }
+        if modifiers.contains(.control) { parts.append("ctrl") }
+        if modifiers.contains(.option) { parts.append("option") }
+        let hasMain = !parts.isEmpty
+        if modifiers.contains(.shift) { parts.append("shift") }
+        guard hasMain || name.hasPrefix("f") && name.count > 1 && Int(name.dropFirst()) != nil else { return nil }
+        return (parts + [name]).joined(separator: "+")
+    }
+
+    /// The spec for a key event, using the current layout.
+    static func spec(for event: NSEvent) -> String? {
+        let char = layoutKeyCodes().first { $0.value == UInt32(event.keyCode) }?.key ?? ""
+        return spec(keyCode: event.keyCode, character: char, modifiers: event.modifierFlags.intersection(.deviceIndependentFlagsMask))
+    }
+
+    /// "cmd+shift+backslash" → "⇧⌘\", in the order macOS menus use (⌃⌥⇧⌘).
+    static func display(_ spec: String) -> String {
+        var mods = Set<String>()
+        var key = ""
+        for raw in spec.lowercased().split(separator: "+") {
+            let part = raw.trimmingCharacters(in: .whitespaces)
+            switch part {
+            case "cmd", "command", "super": mods.insert("⌘")
+            case "opt", "option", "alt": mods.insert("⌥")
+            case "ctrl", "control": mods.insert("⌃")
+            case "shift": mods.insert("⇧")
+            case "space": key = "Space"
+            case "return", "enter": key = "↩"
+            case "tab": key = "⇥"
+            case "escape", "esc": key = "⎋"
+            default: key = punctuationNames[part] ?? part.uppercased()
+            }
+        }
+        return ["⌃", "⌥", "⇧", "⌘"].filter(mods.contains).joined() + key
+    }
+
+    private static let namedKeyNames: [UInt32: String] = {
+        var m: [UInt32: String] = [:]
+        for (name, code) in namedKeys where !["enter", "esc"].contains(name) { m[code] = name }
+        m[UInt32(kVK_Escape)] = nil   // Esc cancels recording
+        return m
+    }()
+
+    private static let canonicalPunctuation: Set<String> = [
+        "backslash", "grave", "minus", "equal", "semicolon", "quote", "comma", "period", "slash", "leftbracket", "rightbracket",
+    ]
+
     /// Named keys first, then the character in the current layout, then the US position.
     static func keyCode(for name: String) -> UInt32? {
         if let code = namedKeys[name] { return code }

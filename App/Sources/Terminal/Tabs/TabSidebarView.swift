@@ -3,9 +3,12 @@ import AppKit
 /// Vertical tab list (specs/02-look.md), left or right of the terminal:
 /// a "New tab" row, then one card per tab with its title, its folder in dim
 /// text and its ⌘N shortcut (a close button on hover).
+/// In the hotkey dropdown (`compactHeader`) the first row is a + on the left,
+/// with the menu button (placed by the root view) on the right.
 final class TabSidebarView: NSView {
     var items: [TabBarView.Item] = [] { didSet { needsDisplay = true } }
     var edge: AppConfig.TabsPosition = .left { didSet { needsDisplay = true } }
+    var compactHeader = false { didSet { if compactHeader != oldValue { needsDisplay = true; updateToolTips() } } }
     var onSelect: ((Int) -> Void)?
     var onClose: ((Int) -> Void)?
     var onNew: (() -> Void)?
@@ -18,12 +21,18 @@ final class TabSidebarView: NSView {
     override var isFlipped: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
 
-    private var newRect: NSRect {
+    /// The first row: "New tab", or the dropdown's + and menu button.
+    var headerRect: NSRect {
         NSRect(x: Theme.sidebarMargin, y: Theme.sidebarMargin, width: bounds.width - 2 * Theme.sidebarMargin, height: Theme.sidebarRowHeight)
     }
 
+    private var newRect: NSRect {
+        let h = headerRect
+        return compactHeader ? NSRect(x: h.minX, y: h.minY, width: h.height, height: h.height) : h
+    }
+
     private func cardRect(_ i: Int) -> NSRect {
-        let top = newRect.maxY + 6
+        let top = headerRect.maxY + 6
         return NSRect(x: Theme.sidebarMargin, y: top + CGFloat(i) * (Theme.sidebarCardHeight + 2),
                       width: bounds.width - 2 * Theme.sidebarMargin, height: Theme.sidebarCardHeight)
     }
@@ -51,11 +60,15 @@ final class TabSidebarView: NSView {
             NSBezierPath(roundedRect: nr, xRadius: Theme.tabCorner, yRadius: Theme.tabCorner).fill()
         }
         let newColor = hoveredNew ? theme.foreground : theme.dim
-        drawPlus(in: NSRect(x: nr.minX + 10, y: nr.midY - 5, width: 10, height: 10), color: newColor)
-        ("New tab" as NSString).draw(at: NSPoint(x: nr.minX + 28, y: nr.midY - 8), withAttributes: [
-            .font: NSFont.systemFont(ofSize: 12), .foregroundColor: newColor,
-        ])
-        drawShortcut("⌘T", right: nr.maxX - 10, midY: nr.midY, color: theme.dim)
+        if compactHeader {
+            drawPlus(in: NSRect(x: nr.midX - 5.5, y: nr.midY - 5.5, width: 11, height: 11), color: newColor)
+        } else {
+            drawPlus(in: NSRect(x: nr.minX + 10, y: nr.midY - 5, width: 10, height: 10), color: newColor)
+            ("New tab" as NSString).draw(at: NSPoint(x: nr.minX + 28, y: nr.midY - 8), withAttributes: [
+                .font: NSFont.systemFont(ofSize: 12), .foregroundColor: newColor,
+            ])
+            drawShortcut("⌘T", right: nr.maxX - 10, midY: nr.midY, color: theme.dim)
+        }
 
         for (i, item) in items.enumerated() {
             let r = cardRect(i)
@@ -78,13 +91,27 @@ final class TabSidebarView: NSView {
                 NSBezierPath(ovalIn: NSRect(x: x, y: r.minY + 13, width: 6, height: 6)).fill()
                 x += 11
             }
+            // A card without a folder line (Settings) centres its title.
+            let labelY = item.detail.isEmpty ? r.midY - 8 : r.minY + 7
+            if let name = item.symbol, let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) {
+                let symbol = image.withSymbolConfiguration(.init(pointSize: 12, weight: .regular)) ?? image
+                let size = symbol.size
+                let tinted = NSImage(size: size, flipped: false) { rect in
+                    symbol.draw(in: rect)
+                    (item.active ? theme.foreground : theme.dim).set()
+                    rect.fill(using: .sourceAtop)
+                    return true
+                }
+                tinted.draw(in: NSRect(x: x, y: r.midY - size.height / 2, width: size.width, height: size.height))
+                x += size.width + 7
+            }
             let right = r.maxX - 34
             let truncating: NSParagraphStyle = {
                 let p = NSMutableParagraphStyle()
                 p.lineBreakMode = .byTruncatingMiddle
                 return p
             }()
-            (item.label as NSString).draw(in: NSRect(x: x, y: r.minY + 7, width: right - x, height: 16), withAttributes: [
+            (item.label as NSString).draw(in: NSRect(x: x, y: labelY, width: right - x, height: 16), withAttributes: [
                 .font: NSFont.systemFont(ofSize: 12, weight: item.active ? .medium : .regular),
                 .foregroundColor: item.active ? theme.foreground : theme.foreground.withAlphaComponent(0.8),
                 .paragraphStyle: truncating,
@@ -107,7 +134,7 @@ final class TabSidebarView: NSView {
                     NSBezierPath(roundedRect: cr, xRadius: 4, yRadius: 4).fill()
                 }
                 drawX(in: cr.insetBy(dx: 5, dy: 5), color: hoveredClose ? theme.foreground : theme.dim)
-            } else if i < 9 {
+            } else if i < 9, item.symbol == nil {
                 drawShortcut(i == 8 ? "⌘9" : "⌘\(i + 1)", right: r.maxX - 10, midY: r.midY, color: theme.dim)
             }
         }
@@ -149,6 +176,12 @@ final class TabSidebarView: NSView {
         let t = NSTrackingArea(rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
         addTrackingArea(t)
         trackingArea = t
+        updateToolTips()
+    }
+
+    private func updateToolTips() {
+        removeAllToolTips()
+        addToolTip(newRect, owner: "New tab (⌘T)" as NSString, userData: nil)
     }
 
     private func index(at p: NSPoint) -> Int? { items.indices.first { cardRect($0).contains(p) } }

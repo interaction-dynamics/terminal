@@ -17,6 +17,17 @@ screen on a global shortcut.
 - Pressing the shortcut again hides it and gives focus back to the previous
   app.
 - Normal windows (`⌘N`) still exist next to the dropdown.
+- **Can be turned off** (`hotkey-enabled = false`, or the switch in Settings
+  and in the onboarding): the shortcut is released and the dropdown hidden.
+- **Shortcut recorder** in Settings and the onboarding: click it, press the
+  keys. A shortcut needs ⌘, ⌃ or ⌥ (or is a function key). While it listens,
+  the current hotkey is released so it can be pressed again.
+- **Dock and app switcher:** with `dock-icon = auto` (default) the app shows
+  in the Dock and `⌘⇥` only while a normal window is open. With the dropdown
+  alone it stays out of both, like a menu-bar utility (see
+  [settings](09-settings.md)).
+- **Layout:** with the tabs in a sidebar, the sidebar runs from the top with a
+  + and the menu button in its first row (see [look](02-look.md)).
 
 ## Implementation notes
 

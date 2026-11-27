@@ -76,7 +76,7 @@ final class HotkeyPanel: NSPanel {
 }
 
 final class HotkeyWindowController: NSObject, NSWindowDelegate, TerminalWindowController {
-    let content = TerminalContentController(leadingInset: 12)
+    let content = TerminalContentController(leadingInset: 12, compactChrome: true)
     let panel: HotkeyPanel
     var window: NSWindow? { panel }
     private(set) var isShown = false
@@ -222,9 +222,10 @@ final class HotkeyWindowController: NSObject, NSWindowDelegate, TerminalWindowCo
 
     func windowDidResignKey(_ notification: Notification) {
         guard config.hotkeyAutohide, isShown, !animating else { return }
-        // Clicking another app's window hides the dropdown; our own windows/alerts don't.
+        // Clicking another app's window hides the dropdown; our own windows, menus and alerts don't.
         DispatchQueue.main.async { [self] in
-            if NSApp.keyWindow == nil || !NSApp.isActive {
+            // A menu or popover of our own also takes key: only another app counts.
+            if !NSApp.isActive {
                 hide(restoreFocus: false)
             }
         }

@@ -7,6 +7,8 @@ struct AppConfig {
     enum Edge: String { case top, bottom, left, right, center }
     enum ScreenChoice: String { case mouse, main }
     enum TabsPosition: String, CaseIterable { case left, right, top }
+    /// Dock icon and ⌘⇥ switcher: `auto` shows them only while a normal window is open.
+    enum DockIcon: String, CaseIterable { case auto, always, never }
     enum Size: Equatable {
         case percent(Double)
         case pixels(Double)
@@ -27,6 +29,7 @@ struct AppConfig {
     }
 
     // Hotkey window (specs/03-hotkey-window.md)
+    var hotkeyEnabled = true
     var hotkey = "cmd+shift+backslash"
     var hotkeyPosition = Edge.top
     var hotkeyHeight = Size.percent(0.45)
@@ -41,9 +44,12 @@ struct AppConfig {
     static let tabsWidthRange: ClosedRange<CGFloat> = 140...420
 
     // App behaviour
+    var dockIcon = DockIcon.auto
     var launchAtLogin = false
     var smartInput = true
     var historyImport = true
+    /// Shell for new tabs: a path, or empty for the login shell (specs/09-settings.md).
+    var shell = ""
 
     /// Lines forwarded to libghostty, after our defaults.
     var ghosttyLines: [String] = []
@@ -63,6 +69,14 @@ struct AppConfig {
         ("frost", "Frost", ["theme = Nord"]),
         ("paper", "Paper", ["theme = GitHub Light Default"]),
         ("auto", "Match system", []),
+    ]
+
+    /// Swatch colours for the theme picker: background, text, accent (hex).
+    static let themePreviews: [String: (bg: String, fg: String, accent: String)] = [
+        "midnight": ("0e0e0e", "d4d4d4", "58a6ff"),
+        "graphite": ("1c1c1e", "c8c8c8", "81a2be"),
+        "frost": ("2e3440", "d8dee9", "88c0d0"),
+        "paper": ("ffffff", "24292f", "0969da"),
     ]
 
     static let ghosttyDefaults = """
@@ -193,6 +207,8 @@ struct AppConfig {
         let bool = ["true", "yes", "on", "1"].contains(value.lowercased())
         switch key {
         case "hotkey": hotkey = value
+        case "hotkey-enabled": hotkeyEnabled = bool
+        case "dock-icon": dockIcon = DockIcon(rawValue: value) ?? dockIcon
         case "hotkey-position": hotkeyPosition = Edge(rawValue: value) ?? hotkeyPosition
         case "hotkey-height": hotkeyHeight = Size(value) ?? hotkeyHeight
         case "hotkey-width": hotkeyWidth = Size(value) ?? hotkeyWidth
@@ -201,6 +217,7 @@ struct AppConfig {
         case "hotkey-animation": hotkeyAnimation = value.lowercased() == "false" ? 0 : (Double(value) ?? hotkeyAnimation)
         case "launch-at-login": launchAtLogin = bool
         case "smart-input": smartInput = bool
+        case "shell": shell = value == "auto" ? "" : value
         case "history-import": historyImport = bool
         case "tabs-position": tabsPosition = TabsPosition(rawValue: value) ?? tabsPosition
         case "tabs-width":
@@ -223,6 +240,7 @@ struct AppConfig {
         # theme = midnight            # midnight, graphite, frost, paper, auto, or any Ghostty theme
         # tabs-position = left         # left, right or top
         # tabs-width = 220
+        # hotkey-enabled = true
         # hotkey = cmd+shift+backslash
         # hotkey-position = top        # top, bottom, left, right, center
         # hotkey-height = 45%
@@ -230,8 +248,10 @@ struct AppConfig {
         # hotkey-screen = mouse        # mouse or main
         # hotkey-autohide = true
         # hotkey-animation = 0.12      # seconds, or false
+        # dock-icon = auto             # auto (only while a window is open), always, never
         # launch-at-login = false
         # smart-input = true
+        # shell = auto                 # or a path: /bin/bash, /opt/homebrew/bin/fish…
         #
         # Any Ghostty option works too, for example:
         # font-family = JetBrains Mono
@@ -270,4 +290,42 @@ final class ConfigWatcher {
         src.resume()
         source = src
     }
+}
+
+// MARK: - Shells
+
+enum Shells {
+    /// Where shells live besides /etc/shells (Homebrew on Apple silicon and Intel).
+    static let extraPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
+    static let extraNames = ["zsh", "bash", "fish", "nu", "xonsh", "elvish"]
+
+    /// The user's login shell (from the user database, not $SHELL).
+    static var login: String {
+        if let pw = getpwuid(getuid()), let shell = pw.pointee.pw_shell { return String(cString: shell) }
+        return ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+    }
+
+    /// Installed shells: /etc/shells, then the usual Homebrew ones. Only executables.
+    static func available() -> [String] {
+        let listed = (try? String(contentsOfFile: "/etc/shells", encoding: .utf8)).map(parse) ?? []
+        let extra = extraPaths.flatMap { dir in extraNames.map { "\(dir)/\($0)" } }
+        var seen = Set<String>()
+        return (listed + extra).filter { FileManager.default.isExecutableFile(atPath: $0) && seen.insert($0).inserted }
+    }
+
+    /// Paths from an /etc/shells file (comments and blank lines skipped).
+    static func parse(_ text: String) -> [String] {
+        text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("/") }
+    }
+
+    /// The shell new tabs run: the configured one if it can run, else the login shell.
+    static func resolved(_ configured: String) -> String {
+        configured.isEmpty || !FileManager.default.isExecutableFile(atPath: configured) ? login : configured
+    }
+
+    /// "zsh", "bash"…
+    static func name(_ path: String) -> String { (path as NSString).lastPathComponent }
+
+    /// Only zsh has the shell integration (smart input, command blocks) for now.
+    static func hasIntegration(_ path: String) -> Bool { name(path) == "zsh" }
 }

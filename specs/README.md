@@ -63,3 +63,4 @@ decision and a performance check.
 9. [Rules for agents](agent-rules.md)
 10. [Settings](09-settings.md)
 11. [Releases and updates](10-updates.md)
+12. [Onboarding](11-onboarding.md)

@@ -38,6 +38,9 @@ final class TerminalSurfaceView: NSView, TerminalSurface {
         let cwd: UnsafeMutablePointer<CChar>? = options.workingDirectory.flatMap { strdup($0) }
         defer { free(cwd) }
         cfg.working_directory = cwd.map { UnsafePointer($0) }
+        let command: UnsafeMutablePointer<CChar>? = options.command.flatMap { strdup($0) }
+        defer { free(command) }
+        cfg.command = command.map { UnsafePointer($0) }
 
         surface = env.withUnsafeMutableBufferPointer { buf in
             cfg.env_vars = buf.baseAddress
