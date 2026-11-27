@@ -6,6 +6,7 @@ import AppKit
 struct AppConfig {
     enum Edge: String { case top, bottom, left, right, center }
     enum ScreenChoice: String { case mouse, main }
+    enum TabsPosition: String, CaseIterable { case left, right, top }
     enum Size: Equatable {
         case percent(Double)
         case pixels(Double)
@@ -34,6 +35,11 @@ struct AppConfig {
     var hotkeyAutohide = true
     var hotkeyAnimation = 0.12
 
+    // Tabs (specs/02-look.md): a sidebar on the left by default.
+    var tabsPosition = TabsPosition.left
+    var tabsWidth: CGFloat = 220
+    static let tabsWidthRange: ClosedRange<CGFloat> = 140...420
+
     // App behaviour
     var launchAtLogin = false
     var smartInput = true
@@ -47,8 +53,19 @@ struct AppConfig {
     /// own shell integration and owns the shortcuts.
     static let defaultFontSize = 12.0
 
+    static let defaultTheme = "midnight"
+
+    /// Built-in themes (specs/09-settings.md), as Ghostty lines. Tune colours here.
+    /// `auto` follows the system: paper when light, midnight when dark.
+    static let builtinThemes: [(name: String, title: String, lines: [String])] = [
+        ("midnight", "Midnight", ["theme = GitHub Dark Default", "background = 0e0e0e", "foreground = d4d4d4"]),
+        ("graphite", "Graphite", ["theme = Tomorrow Night", "background = 1c1c1e", "foreground = c8c8c8"]),
+        ("frost", "Frost", ["theme = Nord"]),
+        ("paper", "Paper", ["theme = GitHub Light Default"]),
+        ("auto", "Match system", []),
+    ]
+
     static let ghosttyDefaults = """
-    theme = light:GitHub Light Default,dark:GitHub Dark Default
     font-size = \(Int(defaultFontSize))
     window-padding-x = 16
     window-padding-y = 12
@@ -84,13 +101,38 @@ struct AppConfig {
     /// conditional theme makes libghostty rebuild every new surface's config
     /// from the file, which drops the per-surface options (env vars, command)
     /// the shell integration needs.
+    ///
+    /// Only the last `theme` line counts. Its lines go right after the defaults,
+    /// so the user's own colour lines still win over a built-in theme.
     func ghosttyConfigText(dark: Bool) -> String {
-        let lines = Self.ghosttyDefaults.split(separator: "\n").map(String.init) + ghosttyLines + [Self.ghosttyForced]
-        return lines.map { line in
-            let p = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-            guard p.count == 2, p[0] == "theme" else { return line }
-            return "theme = " + Self.resolveTheme(p[1], dark: dark)
-        }.joined(separator: "\n") + "\n"
+        let defaults = Self.ghosttyDefaults.split(separator: "\n").map(String.init)
+        let user = ghosttyLines.filter { Self.key(of: $0) != "theme" }
+        let lines = defaults + Self.themeLines(theme, dark: dark) + user + [Self.ghosttyForced]
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// The theme the user picked: a built-in name, a Ghostty theme, or `light:A,dark:B`.
+    var theme: String {
+        ghosttyLines.last { Self.key(of: $0) == "theme" }.flatMap(Self.value(of:)) ?? Self.defaultTheme
+    }
+
+    static func themeLines(_ value: String, dark: Bool) -> [String] {
+        var name = resolveTheme(value, dark: dark)
+        if name == "auto" { name = dark ? "midnight" : "paper" }
+        if let builtin = builtinThemes.first(where: { $0.name == name }) { return builtin.lines }
+        return ["theme = " + name]
+    }
+
+    static func key(of line: String) -> String? {
+        guard let eq = line.firstIndex(of: "=") else { return nil }
+        return line[..<eq].trimmingCharacters(in: .whitespaces)
+    }
+
+    static func value(of line: String) -> String? {
+        guard let eq = line.firstIndex(of: "=") else { return nil }
+        var v = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+        if v.count >= 2, v.hasPrefix("\""), v.hasSuffix("\"") { v = String(v.dropFirst().dropLast()) }
+        return v
     }
 
     /// `light:A,dark:B` → A or B. Any other value is returned as is.
@@ -103,6 +145,28 @@ struct AppConfig {
         }
         guard light != nil || darkTheme != nil else { return value }
         return (dark ? darkTheme ?? light : light ?? darkTheme)!
+    }
+
+    /// Sets `key = value` in the config file (nil removes it), keeping every
+    /// other line and comment as typed. The file watcher then reloads the app.
+    static func update(_ key: String, to value: String?) {
+        writeStarterIfMissing()
+        let text = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+        var lines = text.components(separatedBy: "\n")
+        let matches = lines.indices.filter {
+            let l = lines[$0].trimmingCharacters(in: .whitespaces)
+            return !l.hasPrefix("#") && self.key(of: l) == key
+        }
+        let newLine = value.map { "\(key) = \($0)" }
+        if let last = matches.last {
+            // Drop earlier duplicates: the last one is the one that counts.
+            for i in matches.dropLast().reversed() { lines.remove(at: i) }
+            let at = last - (matches.count - 1)
+            if let newLine { lines[at] = newLine } else { lines.remove(at: at) }
+        } else if let newLine {
+            if lines.last == "" { lines.insert(newLine, at: lines.count - 1) } else { lines.append(newLine) }
+        }
+        try? lines.joined(separator: "\n").write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
     static func load() -> AppConfig {
@@ -138,6 +202,9 @@ struct AppConfig {
         case "launch-at-login": launchAtLogin = bool
         case "smart-input": smartInput = bool
         case "history-import": historyImport = bool
+        case "tabs-position": tabsPosition = TabsPosition(rawValue: value) ?? tabsPosition
+        case "tabs-width":
+            if let w = Double(value) { tabsWidth = min(max(CGFloat(w), Self.tabsWidthRange.lowerBound), Self.tabsWidthRange.upperBound) }
         // Owned by the app: ignore so the user can't break the integration.
         case "shell-integration", "keybind": return true
         default: return false
@@ -153,6 +220,9 @@ struct AppConfig {
         let starter = """
         # Terminal config. Reloaded when saved.
         # App options:
+        # theme = midnight            # midnight, graphite, frost, paper, auto, or any Ghostty theme
+        # tabs-position = left         # left, right or top
+        # tabs-width = 220
         # hotkey = cmd+shift+backslash
         # hotkey-position = top        # top, bottom, left, right, center
         # hotkey-height = 45%
@@ -164,7 +234,6 @@ struct AppConfig {
         # smart-input = true
         #
         # Any Ghostty option works too, for example:
-        # theme = Catppuccin Mocha
         # font-family = JetBrains Mono
         # font-size = 12
         # background-opacity = 0.92

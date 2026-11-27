@@ -24,6 +24,11 @@ struct Theme {
     static let tabCorner: CGFloat = 7
     static let menuCorner: CGFloat = 10
     static let trafficLightsInset: CGFloat = 80
+    // Tab sidebar (specs/02-look.md)
+    static let sidebarCardHeight: CGFloat = 44
+    static let sidebarRowHeight: CGFloat = 30
+    static let sidebarMargin: CGFloat = 8
+    static let gearSize: CGFloat = 26
 
     static var current = Theme.make()
 

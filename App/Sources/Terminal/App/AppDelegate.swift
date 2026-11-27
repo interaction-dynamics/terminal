@@ -119,6 +119,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func decreaseFontSize(_ sender: Any?) { ConfigStore.shared.zoom(by: -1) }
     @objc func resetFontSize(_ sender: Any?) { ConfigStore.shared.zoom(by: 0) }
 
+    /// Settings popover over the current window (specs/09-settings.md).
+    @objc func openSettings(_ sender: Any?) {
+        if current == nil { newWindow(nil) }
+        current?.content.showSettings()
+    }
+
     @objc func openConfig(_ sender: Any?) {
         AppConfig.writeStarterIfMissing()
         NSWorkspace.shared.open(AppConfig.fileURL)

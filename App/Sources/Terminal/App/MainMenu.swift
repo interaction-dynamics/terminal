@@ -8,7 +8,8 @@ enum MainMenu {
         main.addItem(submenu("App", [
             item("About \(name)", #selector(NSApplication.orderFrontStandardAboutPanel(_:)), target: NSApp),
             .separator(),
-            item("Settings…", #selector(AppDelegate.openConfig(_:)), ","),
+            item("Settings…", #selector(AppDelegate.openSettings(_:)), ","),
+            item("Open Config File", #selector(AppDelegate.openConfig(_:)), ""),
             .separator(),
             item("Hide \(name)", #selector(NSApplication.hide(_:)), "h", target: NSApp),
             item("Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option], target: NSApp),

@@ -20,12 +20,44 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(c.ghosttyLines, ["font-size = 16", "theme = \"Catppuccin Mocha\""])
         // Forced lines come last so they always win.
         XCTAssertTrue(c.ghosttyConfigText(dark: true).hasSuffix("keybind = super+end=scroll_to_bottom\n"))
-        // Conditional themes are resolved by the app, never passed to libghostty.
-        XCTAssertTrue(c.ghosttyConfigText(dark: true).contains("theme = GitHub Dark Default\n"))
-        XCTAssertTrue(c.ghosttyConfigText(dark: false).contains("theme = GitHub Light Default\n"))
-        XCTAssertFalse(c.ghosttyConfigText(dark: false).contains("light:"))
+        XCTAssertEqual(c.theme, "Catppuccin Mocha")
+        XCTAssertTrue(c.ghosttyConfigText(dark: true).contains("theme = Catppuccin Mocha\n"))
         XCTAssertEqual(AppConfig.resolveTheme("Catppuccin Mocha", dark: true), "Catppuccin Mocha")
         XCTAssertEqual(AppConfig.resolveTheme("dark:Nord", dark: false), "Nord")
+    }
+
+    func testThemesAndTabs() {
+        // Default: midnight, tabs on the left.
+        let d = AppConfig.parse("")
+        XCTAssertEqual(d.theme, "midnight")
+        XCTAssertEqual(d.tabsPosition, .left)
+        XCTAssertTrue(d.ghosttyConfigText(dark: false).contains("background = 0e0e0e\n"))
+        // Conditional themes are resolved by the app, never passed to libghostty.
+        let auto = AppConfig.parse("theme = auto")
+        XCTAssertTrue(auto.ghosttyConfigText(dark: false).contains("theme = GitHub Light Default\n"))
+        XCTAssertTrue(auto.ghosttyConfigText(dark: true).contains("background = 0e0e0e\n"))
+        let split = AppConfig.parse("theme = light:paper,dark:frost")
+        XCTAssertTrue(split.ghosttyConfigText(dark: true).contains("theme = Nord\n"))
+        XCTAssertFalse(split.ghosttyConfigText(dark: false).contains("light:"))
+        // The user's colours come after the theme's, so they win.
+        let custom = AppConfig.parse("background = 000000")
+        let text = custom.ghosttyConfigText(dark: true)
+        XCTAssertLessThan(text.range(of: "background = 0e0e0e")!.lowerBound, text.range(of: "background = 000000")!.lowerBound)
+        let t = AppConfig.parse("tabs-position = top\ntabs-width = 9999")
+        XCTAssertEqual(t.tabsPosition, .top)
+        XCTAssertEqual(t.tabsWidth, AppConfig.tabsWidthRange.upperBound)
+    }
+
+    func testUpdateKeepsOtherLines() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("terminal"), withIntermediateDirectories: true)
+        setenv("XDG_CONFIG_HOME", dir.path, 1)
+        defer { unsetenv("XDG_CONFIG_HOME"); try? FileManager.default.removeItem(at: dir) }
+        try "# mine\ntheme = Nord\nfont-family = Iosevka\ntheme = frost\n".write(to: AppConfig.fileURL, atomically: true, encoding: .utf8)
+        AppConfig.update("theme", to: "paper")
+        AppConfig.update("tabs-position", to: "right")
+        AppConfig.update("font-family", to: nil)
+        XCTAssertEqual(try String(contentsOf: AppConfig.fileURL, encoding: .utf8), "# mine\ntheme = paper\ntabs-position = right\n")
     }
 
     func testSizes() {

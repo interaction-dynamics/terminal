@@ -1,10 +1,14 @@
 import AppKit
 
-/// Content of a terminal window (normal or hotkey): tab bar, the active tab's
-/// terminal, and the smart input pinned at the bottom.
+/// Content of a terminal window (normal or hotkey): title strip with the
+/// settings gear, the tabs (sidebar or top bar), the active tab's terminal,
+/// and the smart input pinned at the bottom.
 final class TerminalContentController: NSObject, SmartTextViewDelegate {
     let root = ContentRootView()
+    let titleBar = TitleBarView()
     let tabBar = TabBarView()
+    let sidebar = TabSidebarView()
+    let gear = NSButton()
     let input = InputAreaView()
     private let terminalContainer = NSView()
     private let popup = SuggestionPopup()
@@ -28,25 +32,46 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     init(leadingInset: CGFloat) {
         super.init()
         tabBar.leadingInset = leadingInset
+        root.titleBar = titleBar
         root.tabBar = tabBar
+        root.sidebar = sidebar
+        root.gear = gear
         root.terminal = terminalContainer
         root.input = input
         root.addSubview(terminalContainer)
+        root.addSubview(titleBar)
         root.addSubview(tabBar)
+        root.addSubview(sidebar)
         root.addSubview(input)
+        root.addSubview(gear)
         input.textView.smartDelegate = self
         tabBar.onSelect = { [weak self] i in self?.select(i) }
         tabBar.onClose = { [weak self] i in self?.closeTab(at: i) }
         tabBar.onNew = { [weak self] in self?.newTab() }
+        sidebar.onSelect = { [weak self] i in self?.select(i) }
+        sidebar.onClose = { [weak self] i in self?.closeTab(at: i) }
+        sidebar.onNew = { [weak self] in self?.newTab() }
+        gear.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
+        gear.isBordered = false
+        gear.imageScaling = .scaleProportionallyDown
+        gear.toolTip = "Settings (⌘,)"
+        gear.target = self
+        gear.action = #selector(showSettings)
+        gear.contentTintColor = Theme.current.dim
         popup.onPick = { [weak self] i in self?.pickPopup(i) }
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged), name: .terminalThemeChanged, object: nil)
     }
 
     @objc func themeChanged() {
         Theme.current = Theme.make()
-        root.needsDisplay = true
-        tabBar.needsDisplay = true
+        gear.contentTintColor = Theme.current.dim
+        root.needsLayout = true
+        for v in [root, titleBar, tabBar, sidebar] as [NSView] { v.needsDisplay = true }
         input.applyTheme()
+    }
+
+    @objc func showSettings() {
+        SettingsPopover.shared.toggle(from: gear)
     }
 
     // MARK: Tabs
@@ -128,11 +153,14 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
 
     /// Updates tab labels, the prompt line and which part has the keyboard.
     func refresh() {
-        tabBar.items = sessions.enumerated().map { i, s in
-            TabBarView.Item(label: s.label, active: i == activeIndex, bell: bells.contains(s.id))
+        let items = sessions.enumerated().map { i, s in
+            TabBarView.Item(label: s.label, detail: s.displayDirectory, active: i == activeIndex, bell: bells.contains(s.id))
         }
+        tabBar.items = items
+        sidebar.items = items
         guard let s = active else { return }
         onTitleChange?(s.label)
+        titleBar.title = s.label
         let showInput = s.state == .atPrompt && ConfigStore.shared.config.smartInput
         if input.isHidden == showInput {
             input.isHidden = !showInput
@@ -364,9 +392,13 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     }
 }
 
-/// Lays out tab bar / terminal / input, and paints the translucent background behind the chrome.
+/// Lays out title strip / tabs / terminal / input, and paints the translucent
+/// background behind the title strip.
 final class ContentRootView: NSView {
-    weak var tabBar: NSView?
+    weak var titleBar: TitleBarView?
+    weak var tabBar: TabBarView?
+    weak var sidebar: TabSidebarView?
+    weak var gear: NSView?
     weak var terminal: NSView?
     weak var input: InputAreaView?
 
@@ -374,14 +406,35 @@ final class ContentRootView: NSView {
 
     override func layout() {
         super.layout()
-        let tabH = Theme.tabBarHeight
-        tabBar?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: tabH)
+        let config = ConfigStore.shared.config
+        let titleH = Theme.tabBarHeight
+        let g = Theme.gearSize
+        titleBar?.frame = NSRect(x: 0, y: 0, width: bounds.width, height: titleH)
+        // The gear is always there, top-right, whatever the tab position.
+        gear?.frame = NSRect(x: bounds.width - g - 10, y: (titleH - g) / 2, width: g, height: g)
+
+        var body = NSRect(x: 0, y: titleH, width: bounds.width, height: max(0, bounds.height - titleH))
+        let side = config.tabsPosition != .top
+        tabBar?.isHidden = side
+        sidebar?.isHidden = !side
+        titleBar?.showsTitle = side
+        if side {
+            let w = min(config.tabsWidth, bounds.width / 2)
+            let left = config.tabsPosition == .left
+            sidebar?.edge = config.tabsPosition
+            sidebar?.frame = NSRect(x: left ? 0 : bounds.width - w, y: titleH, width: w, height: body.height)
+            body.size.width -= w
+            if left { body.origin.x = w }
+        } else {
+            tabBar?.frame = NSRect(x: 0, y: 0, width: bounds.width - g - 20, height: titleH)
+        }
+
         var inputH: CGFloat = 0
         if let input, !input.isHidden {
             inputH = input.preferredHeight
-            input.frame = NSRect(x: 0, y: bounds.height - inputH, width: bounds.width, height: inputH)
+            input.frame = NSRect(x: body.minX, y: body.maxY - inputH, width: body.width, height: inputH)
         }
-        terminal?.frame = NSRect(x: 0, y: tabH, width: bounds.width, height: max(0, bounds.height - tabH - inputH))
+        terminal?.frame = NSRect(x: body.minX, y: body.minY, width: body.width, height: max(0, body.height - inputH))
         needsDisplay = true
     }
 
