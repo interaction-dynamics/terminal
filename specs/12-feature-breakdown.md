@@ -42,7 +42,7 @@ Migration order, top to bottom (fewest dependencies first).
 | 6   | Hotkey window   | `features/hotkey-window` | friedrith  | Dropdown terminal on a global shortcut, over any app                     | terminal-window (its content)                  | [x]  |
 | 7   | Settings        | `features/settings`      | friedrith  | The Settings tab: native controls that write the config file             | shell-choice, hotkey-window, updates           | [x]  |
 | 8   | Onboarding      | `features/onboarding`    | friedrith  | First-launch window: welcome, theme, shell, hotkey window, done          | settings, shell-choice, hotkey-window          | [x]  |
-| 9   | Terminal window | `features/terminal-window`| friedrith | Normal windows and the content every window shows (tabs, terminal, input, menu) | tabs, smart-input, settings, updates          | [ ]  |
+| 9   | Terminal window | `features/terminal-window`| friedrith | Normal windows and the content every window shows (tabs, terminal, input, menu) | tabs, smart-input, settings, updates          | [x]  |
 
 ### Shell choice
 
