@@ -37,7 +37,7 @@ Migration order, top to bottom (fewest dependencies first).
 | 1   | Shell choice    | `features/shell-choice`  | friedrith  | Pick the shell new tabs start with (zsh, bash, fish…)                    | —                                              | [x]  |
 | 2   | Autocompletion  | `features/autocompletion`| friedrith  | Suggestions from history, folders, files, branches and scripts           | —                                              | [x]  |
 | 3   | Updates         | `features/updates`       | friedrith  | Check GitHub releases, show the banner, install and relaunch             | —                                              | [x]  |
-| 4   | Smart input     | `features/smart-input`   | friedrith  | Bottom text box edited with the mouse, with the prompt line chips        | autocompletion                                 | [ ]  |
+| 4   | Smart input     | `features/smart-input`   | friedrith  | Bottom text box edited with the mouse, with the prompt line chips        | autocompletion                                 | [x]  |
 | 5   | Tabs            | `features/tabs`          | friedrith  | Shell sessions in tabs, in a sidebar or on top                           | shell-choice, autocompletion                   | [ ]  |
 | 6   | Hotkey window   | `features/hotkey-window` | friedrith  | Dropdown terminal on a global shortcut, over any app                     | terminal-window (its content)                  | [ ]  |
 | 7   | Settings        | `features/settings`      | friedrith  | The Settings tab: native controls that write the config file             | shell-choice, hotkey-window, updates           | [ ]  |
