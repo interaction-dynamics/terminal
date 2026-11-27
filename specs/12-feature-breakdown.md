@@ -35,7 +35,7 @@ Migration order, top to bottom (fewest dependencies first).
 | #   | Feature         | Path                     | Owner      | Description                                                              | Depends on                                     | Done |
 | --- | --------------- | ------------------------ | ---------- | ------------------------------------------------------------------------ | ---------------------------------------------- | ---- |
 | 1   | Shell choice    | `features/shell-choice`  | friedrith  | Pick the shell new tabs start with (zsh, bash, fish…)                    | —                                              | [x]  |
-| 2   | Autocompletion  | `features/autocompletion`| friedrith  | Suggestions from history, folders, files, branches and scripts           | —                                              | [ ]  |
+| 2   | Autocompletion  | `features/autocompletion`| friedrith  | Suggestions from history, folders, files, branches and scripts           | —                                              | [x]  |
 | 3   | Updates         | `features/updates`       | friedrith  | Check GitHub releases, show the banner, install and relaunch             | —                                              | [ ]  |
 | 4   | Smart input     | `features/smart-input`   | friedrith  | Bottom text box edited with the mouse, with the prompt line chips        | autocompletion                                 | [ ]  |
 | 5   | Tabs            | `features/tabs`          | friedrith  | Shell sessions in tabs, in a sidebar or on top                           | shell-choice, autocompletion                   | [ ]  |
