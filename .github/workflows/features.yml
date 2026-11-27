@@ -16,4 +16,4 @@ jobs:
         with:
           node-version: 22
       - name: features check
-        run: npx --yes features-cli@0.15.0 check App/Sources/Terminal --format github
+        run: npx --yes features-cli@0.15.0 check App/Sources/Terminal
