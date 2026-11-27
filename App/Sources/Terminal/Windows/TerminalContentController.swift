@@ -108,7 +108,7 @@ final class TerminalContentController: NSObject, SmartTextViewDelegate {
     }
 
     @objc func showAbout() {
-        AboutPopover.shared.show(from: menuButton)
+        AboutWindow.shared.show(over: root.window)
     }
 
     // MARK: Settings tab

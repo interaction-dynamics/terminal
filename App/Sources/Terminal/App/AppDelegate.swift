@@ -164,8 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showAbout(_ sender: Any?) {
-        if current == nil { newWindow(nil) }
-        current?.content.showAbout()
+        AboutWindow.shared.show(over: NSApp.keyWindow ?? current?.window)
     }
 
     @objc func showOnboarding(_ sender: Any?) {

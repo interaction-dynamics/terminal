@@ -29,7 +29,7 @@ Decided by Thibault (2026-11-27): a Raycast-style window, with these pages.
 2. **Choose your look:** the theme cards (as in Settings).
 3. **Your shell:** one card per installed shell, the login shell and zsh's
    smart input marked (see [settings](09-settings.md)).
-4. **The hotkey window:** on/off, shortcut recorder, position, with a small
+4. **The hotkey window:** on/off, shortcut recorder, position, hide on blur, with a small
    screen that shows where the window drops in.
 5. **Congratulations!** A check that draws itself with a burst of sparks,
    and a button to give feedback on GitHub (the issues page).

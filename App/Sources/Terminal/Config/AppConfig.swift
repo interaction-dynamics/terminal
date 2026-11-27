@@ -85,7 +85,7 @@ struct AppConfig {
     window-padding-y = 12
     window-padding-balance = true
     window-padding-color = extend
-    background-opacity = 0.92
+    background-opacity = 0.9
     background-blur = 20
     cursor-style = bar
     cursor-style-blink = true
@@ -256,7 +256,7 @@ struct AppConfig {
         # Any Ghostty option works too, for example:
         # font-family = JetBrains Mono
         # font-size = 12
-        # background-opacity = 0.92
+        # background-opacity = 0.9
 
         """
         try? starter.write(to: url, atomically: true, encoding: .utf8)

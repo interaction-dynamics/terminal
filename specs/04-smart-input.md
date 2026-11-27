@@ -66,7 +66,8 @@ The shell's own line editor is bypassed, so these are rebuilt in the input box:
 - Drawn by us above the input box: current folder, git branch, last exit
   status, and how long the last command took.
 - Folder and branch are Warp-style chips: a small icon and the text in a
-  rounded outline, in neutral colours. A long folder is cut from the start
+  rounded outline: the folder in neutral grey, the branch in the theme's
+  green. A long folder is cut from the start
   (`…worktrees/hello-58bd80`); when the line is too narrow the branch chip
   goes first. A detached HEAD shows the short commit hash. Chip sizes live in
   `PromptLineView.Chip`.

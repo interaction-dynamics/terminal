@@ -41,8 +41,9 @@ separate window.
   it), in the terminal theme's colours. It closes like a tab (`⌘W`, its X).
 - Sections:
   - **Appearance:** theme cards (a tiny terminal in each theme's colours), font
-    size, tab position.
-  - **Hotkey window:** on/off, shortcut recorder, position.
+    size, opacity (50–100 %, default 90 %, written as `background-opacity`
+    when the slider is released), tab position.
+  - **Hotkey window:** on/off, shortcut recorder, position, hide on blur.
   - **General:** shell, Dock and app switcher, smart input, open at login.
   - **About:** version, Check for Updates…, Show Onboarding…, Send Feedback…,
     Open Config File….

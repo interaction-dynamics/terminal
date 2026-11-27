@@ -504,6 +504,7 @@ final class HotkeyPage: FlippedView, OnboardingPage {
     private let enabled = NSSwitch()
     private let recorder = ShortcutRecorder()
     private var position: NSSegmentedControl!
+    private let hideOnBlur = NSSwitch()
     private let preview = ScreenPositionPreview(frame: NSRect(x: 0, y: 0, width: 200, height: 128))
 
     override init(frame: NSRect) {
@@ -535,12 +536,17 @@ final class HotkeyPage: FlippedView, OnboardingPage {
         position.isEnabled = config.hotkeyEnabled
         position.sizeToFit()
         position.frame.origin = NSPoint(x: controlX, y: 266)
+        hideOnBlur.state = config.hotkeyAutohide ? .on : .off
+        hideOnBlur.isEnabled = config.hotkeyEnabled
+        hideOnBlur.target = self
+        hideOnBlur.action = #selector(hideOnBlurChanged)
+        hideOnBlur.frame = NSRect(x: controlX, y: 310, width: 40, height: 22)
         preview.position = config.hotkeyPosition
         preview.frame.origin = NSPoint(x: bounds.width - inset - 200, y: 170)
         preview.alphaValue = config.hotkeyEnabled ? 1 : 0.4
 
         items = [title, subtitle, label("Hotkey window", y: 176), enabled, label("Shortcut", y: 222), recorder,
-                 label("Position", y: 269), position, preview]
+                 label("Position", y: 269), position, label("Hide on blur", y: 312), hideOnBlur, preview]
         for v in items { v.wantsLayer = true; addSubview(v) }
     }
 
@@ -554,8 +560,13 @@ final class HotkeyPage: FlippedView, OnboardingPage {
         let on = enabled.state == .on
         recorder.isEnabled = on
         position.isEnabled = on
+        hideOnBlur.isEnabled = on
         preview.animator().alphaValue = on ? 1 : 0.4
         AppConfig.update("hotkey-enabled", to: on ? "true" : "false")
+    }
+
+    @objc private func hideOnBlurChanged() {
+        AppConfig.update("hotkey-autohide", to: hideOnBlur.state == .on ? "true" : "false")
     }
 
     @objc private func positionChanged() {

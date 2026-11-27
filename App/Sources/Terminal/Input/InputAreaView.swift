@@ -142,10 +142,13 @@ final class PromptLineView: NSView {
         }
 
         var x: CGFloat = 0
-        drawChip(symbol: "folder", text: directory, x: x, width: folderW, height: chipH, iconSize: iconSize, attrs: attrs)
+        drawChip(symbol: "folder", text: directory, x: x, width: folderW, height: chipH, iconSize: iconSize, attrs: attrs, tint: nil)
         x += folderW + Chip.spacing
         if let branch, branchW > 0 {
-            drawChip(symbol: "arrow.triangle.branch", text: branch, x: x, width: branchW, height: chipH, iconSize: iconSize, attrs: attrs)
+            // The branch (or commit) chip carries the theme's green, like the folder's grey.
+            var branchAttrs = attrs
+            branchAttrs[.foregroundColor] = theme.success
+            drawChip(symbol: "arrow.triangle.branch", text: branch, x: x, width: branchW, height: chipH, iconSize: iconSize, attrs: branchAttrs, tint: theme.success)
             x += branchW + Chip.spacing
         }
         if status.length > 0 {
@@ -155,13 +158,13 @@ final class PromptLineView: NSView {
     }
 
     private func drawChip(symbol: String, text: String, x: CGFloat, width: CGFloat, height: CGFloat,
-                          iconSize: CGFloat, attrs: [NSAttributedString.Key: Any]) {
+                          iconSize: CGFloat, attrs: [NSAttributedString.Key: Any], tint: NSColor?) {
         let theme = Theme.current
         let rect = NSRect(x: x, y: Chip.verticalInset, width: width, height: height).insetBy(dx: 0.5, dy: 0.5)
         let path = NSBezierPath(roundedRect: rect, xRadius: Chip.radius, yRadius: Chip.radius)
-        theme.foreground.withAlphaComponent(0.04).setFill()
+        (tint ?? theme.foreground).withAlphaComponent(tint == nil ? 0.04 : 0.08).setFill()
         path.fill()
-        theme.foreground.withAlphaComponent(0.18).setStroke()
+        (tint ?? theme.foreground).withAlphaComponent(tint == nil ? 0.18 : 0.4).setStroke()
         path.lineWidth = 1
         path.stroke()
 

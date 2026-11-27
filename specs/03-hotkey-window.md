@@ -10,7 +10,10 @@ screen on a global shortcut.
   configurable). Animation ≤ 150 ms, can be turned off.
 - **Shows on every desktop** (Space) and **over full-screen apps**.
 - **Opens on the screen under the mouse** (or the main screen, configurable).
-- **Hides when you click elsewhere** (configurable).
+- **Hides when you click elsewhere** (on by default): "Hide on blur" in
+  Settings and the onboarding, `hotkey-autohide` in the file. Off, it stays
+  until you press the shortcut again. Our own menus, popovers and alerts don't
+  count as elsewhere.
 - **Size** in percent or pixels, for example `height = 45%`, `width = 100%`.
 - **Has tabs**, like a normal window. (Ghostty's quick terminal is a single
   session; this one is not.)

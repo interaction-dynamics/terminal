@@ -24,9 +24,10 @@ Thibault's current Warp setup.
   on the right. With tabs on top, the dropdown keeps the strip.
 - **Menu button** opens a menu: Settings… (`⌘,`, opens the
   [Settings tab](09-settings.md)), Check for Updates…, Show Onboarding…, Send
-  Feedback… (the GitHub issues page), then About (a small popover with the
-  name and version) and Quit. The same items are in the app menu, which matters
-  when the app is hidden from the Dock and has no menu bar.
+  Feedback… (the GitHub issues page), then About (a small centred window
+  with the icon, name, version and a GitHub link; Esc closes it) and Quit.
+  The same items are in the app menu, which matters when the app is hidden
+  from the Dock and has no menu bar.
 - **Terminal output** fills the rest of the window. Each command starts with
   a dim header line (folder, git branch) and ends with a thin line carrying
   its exit code (when it failed, in red) and its duration such as `0.084s`.
