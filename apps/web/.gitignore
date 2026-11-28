@@ -1,7 +1,0 @@
-.env
-# clerk configuration (can include secrets)
-/.clerk/
-.next
-node_modules
-.env*.local
-.vercel

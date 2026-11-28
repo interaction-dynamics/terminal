@@ -1,52 +1,32 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-**/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# macOS
 .DS_Store
-*.pem
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+build/
 
-# local env files
+# Zig (libghostty build)
+.zig-cache/
+zig-out/
+
+# Bun tooling
+node_modules/
+
+# Local env
+.env
 .env*.local
 
-# vercel
-.vercel/*
-!.vercel/project.json
+# Swift Package Manager
+.build/
+.swiftpm/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# libghostty build (bun scripts/build-libghostty.ts)
+Vendor/ghostty/src/
+Vendor/ghostty/GhosttyKit.xcframework/
+Vendor/ghostty/share/
+Vendor/ghostty/build.log
 
-test-results/
-
-.env
-# clerk configuration (can include secrets)
-/.clerk/
-
-*.code-workspace
-
-.turbo
-
-# playwright mcp (snapshots, console logs, screenshots)
-.playwright-mcp/
-
-# tasteskill state: deal history, gate state, Chrome profiles (ADR 0050)
-.taste-skill/
+# Release output (bun scripts/release-package.ts)
+dist/

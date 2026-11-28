@@ -1,0 +1,66 @@
+# Builds and publishes a release when a version tag is pushed (specs/10-updates.md):
+#
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# The release gets Terminal-<version>.zip and its Ed25519 signature (.zip.sig),
+# which the in-app updater downloads and checks.
+# Needs the UPDATE_SIGNING_KEY secret (bun scripts/release-keys.ts --set-secret).
+
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # Zig and Bun, pinned in mise.toml.
+      - uses: jdx/mise-action@v2
+
+      - name: Metal Toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Cache libghostty
+        id: libghostty
+        uses: actions/cache@v4
+        with:
+          path: |
+            Vendor/ghostty/GhosttyKit.xcframework
+            Vendor/ghostty/share
+            Vendor/ghostty/LICENSE
+          key: libghostty-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-libghostty.ts', 'mise.toml') }}
+
+      - name: Build libghostty
+        if: steps.libghostty.outputs.cache-hit != 'true'
+        run: bun scripts/build-libghostty.ts
+
+      - name: Tests
+        run: swift test
+
+      - name: Build the app
+        run: bun scripts/bundle.ts --version "${GITHUB_REF_NAME#v}"
+
+      - name: Zip and sign
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: bun scripts/release-package.ts "${GITHUB_REF_NAME#v}"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Terminal ${GITHUB_REF_NAME#v}" \
+            --generate-notes

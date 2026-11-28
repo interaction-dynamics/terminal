@@ -1,0 +1,23 @@
+name: Features
+
+# Checks the feature folders (specs/12-feature-breakdown.md) with features-cli:
+# duplicate names, missing owners, broken specs and decision records.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# Only reads the repository.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: features check
+        run: npx --yes features-cli@0.15.0 check App/Sources/Terminal
